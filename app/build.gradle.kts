@@ -69,9 +69,20 @@ dependencies {
     // === Google API Kütüphaneleri ===
     // Google ile Güvenli Giriş (OAuth 2.0)
     implementation("com.google.android.gms:play-services-auth:21.0.0")
+    
     // Gmail API
-    implementation("com.google.api-client:google-api-client-android:2.2.0")
     implementation("com.google.apis:google-api-services-gmail:v1-rev20220404-2.0.0")
+    
+    // Google API Client Core ve Android Extensions
+    implementation("com.google.api-client:google-api-client-android:2.2.0")
+    implementation("com.google.api-client:google-api-client-gson:2.2.0")
+    
+    // HTTP Client kütüphaneleri
+    implementation("com.google.http-client:google-http-client-gson:1.44.1")
+    implementation("com.google.http-client:google-http-client-android:1.44.1")
+    
+    // Google OAuth2 ve Auth kütüphaneleri
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
 
     // (Not: Gmail API versiyonları değişebilir, en güncellerini kullanmak iyi bir pratiktir.)
 }
