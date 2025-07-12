@@ -15,7 +15,7 @@ import com.google.android.gms.common.api.Scope
 import com.google.api.services.gmail.GmailScopes
 import com.tarik.mailcleanup.databinding.ActivityMainBinding
 
-class MainActivity : AppCompatActivity() {
+class hganhangiMainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels() // ViewModel'i tembel başlatma (lazy init)
@@ -26,16 +26,14 @@ class MainActivity : AppCompatActivity() {
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        Log.d("DEBUG", "Yeni giriş başarılı, handleSignInSuccess çağrılıyor.")
         if (result.resultCode == RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                // Başarılı giriş!
-                Log.d("MainActivity", "Giriş başarılı: ${account.email}")
-                viewModel.onSignInSuccess(account.displayName)
-                // TODO: Bir sonraki adımda, buradan alınan hesap bilgileriyle Gmail API'ye erişeceğiz.
+                // BURASI KRİTİK: Bu fonksiyon çağrılmalı.
+                handleSignInSuccess(account)
             } catch (e: ApiException) {
-                // Başarısız giriş.
                 Log.e("MainActivity", "Giriş hatası: ${e.statusCode}", e)
                 viewModel.onSignInFailed("Giriş başarısız oldu. Kod: ${e.statusCode}")
             }
@@ -105,15 +103,49 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        viewModel.scanState.observe(this) { state ->
+            when (state) {
+                is ScanState.InProgress -> {
+                    binding.progressBar.visibility = View.VISIBLE
+                    binding.statusTextView.text = "Abonelikleriniz taranıyor..."
+                }
+                is ScanState.Success -> {
+                    binding.progressBar.visibility = View.GONE
+                    val count = state.subscriptions.size // Değişiklik
+                    binding.statusTextView.text = "Harika! $count adet farklı göndericiden abonelik bulundu."
+                    // TODO: Buradan yeni bir Fragment/Activity'e geçip listeyi göstereceğiz.
+                }
+                is ScanState.Error -> {
+                    binding.progressBar.visibility = View.GONE
+                    binding.statusTextView.text = "Hata: ${state.message}"
+                }
+                is ScanState.Idle -> {
+                    // Bir şey yapmaya gerek yok
+                }
+            }
+        }
     }
 
     override fun onStart() {
         super.onStart()
-        // Kullanıcı daha önce giriş yaptıysa, tekrar sormadan sessizce giriş yapmayı dene
+        Log.d("DEBUG", "Mevcut giriş bulundu, handleSignInSuccess çağrılıyor.")
         val account = GoogleSignIn.getLastSignedInAccount(this)
-        if (account != null) {
-            Log.d("MainActivity", "Daha önceden giriş yapılmış: ${account.email}")
-            viewModel.onSignInSuccess(account.displayName)
+
+        if (account != null && GoogleSignIn.hasPermissions(account, Scope(GmailScopes.GMAIL_READONLY))) {
+            handleSignInSuccess(account)
+        } else {
+            // DOĞRU YÖNTEM: ViewModel'e durumu sıfırlamasını söyle.
+            viewModel.resetToIdleState()
         }
+    }
+
+    private fun handleSignInSuccess(account: GoogleSignInAccount) {
+        Log.d("DEBUG", "handleSignInSuccess içinde, startSubscriptionScan çağrılıyor.")
+        Log.d("MainActivity", "Giriş başarılı, tarama başlıyor: ${account.email}")
+        viewModel.onSignInSuccess(account.displayName)
+
+        // BURASI EN KRİTİK NOKTA: Bu satır kesinlikle olmalı.
+        viewModel.startSubscriptionScan(account)
     }
 }
