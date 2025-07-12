@@ -157,3 +157,4 @@ test-output/
 # Emülatör ve cihaz logları
 *.trace
 *.out
+.tmp.driveupload/
