@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("com.google.devtools.ksp") version "1.9.23-1.0.19" // Versiyonu kontrol et
 }
 
 android {
@@ -85,4 +86,14 @@ dependencies {
     implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
 
     // (Not: Gmail API versiyonları değişebilir, en güncellerini kullanmak iyi bir pratiktir.)
+
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
+
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    ksp("androidx.room:room-compiler:$room_version") // Annotation processor
+    // Coroutine desteği için
+    implementation("androidx.room:room-ktx:$room_version")
+
+
 }

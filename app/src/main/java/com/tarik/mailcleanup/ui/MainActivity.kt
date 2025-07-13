@@ -1,4 +1,5 @@
 package com.tarik.mailcleanup.ui
+
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -6,6 +7,7 @@ import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -13,28 +15,26 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.gmail.GmailScopes
+import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.ActivityMainBinding
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
-class hganhangiMainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private val viewModel: MainViewModel by viewModels() // ViewModel'i tembel başlatma (lazy init)
-
+    private val viewModel: MainViewModel by viewModels()
     private lateinit var googleSignInClient: GoogleSignInClient
 
-    // Modern yöntem: Google giriş ekranından gelen sonucu yakalamak için.
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        Log.d("DEBUG", "Yeni giriş başarılı, handleSignInSuccess çağrılıyor.")
         if (result.resultCode == RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                // BURASI KRİTİK: Bu fonksiyon çağrılmalı.
                 handleSignInSuccess(account)
             } catch (e: ApiException) {
-                Log.e("MainActivity", "Giriş hatası: ${e.statusCode}", e)
                 viewModel.onSignInFailed("Giriş başarısız oldu. Kod: ${e.statusCode}")
             }
         } else {
@@ -52,17 +52,24 @@ class hganhangiMainActivity : AppCompatActivity() {
         observeViewModel()
     }
 
+    override fun onStart() {
+        super.onStart()
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        if (account != null && GoogleSignIn.hasPermissions(account, Scope(GmailScopes.GMAIL_READONLY))) {
+            handleSignInSuccess(account)
+        } else {
+            viewModel.resetToIdleState()
+        }
+    }
+
     private fun configureGoogleSignIn() {
-        // Google Giriş Seçeneklerini Yapılandırma
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            // Gmail API'sini kullanmak için İZİN İSTİYORUZ. Bu en önemli satır!
             .requestScopes(Scope(GmailScopes.GMAIL_READONLY))
-            // Kullanıcının e-posta adresini istiyoruz.
             .requestEmail()
             .build()
-
         googleSignInClient = GoogleSignIn.getClient(this, gso)
     }
+
 
     private fun setupClickListeners() {
         binding.signInButton.setOnClickListener {
@@ -76,76 +83,63 @@ class hganhangiMainActivity : AppCompatActivity() {
         googleSignInLauncher.launch(signInIntent)
     }
 
-    // ViewModel'deki değişiklikleri dinleyip UI'ı güncelleme
-    private fun observeViewModel() {
-        viewModel.signInState.observe(this) { state ->
-            when (state) {
-                is SignInState.Idle -> {
-                    binding.progressBar.visibility = View.GONE
-                    binding.signInButton.visibility = View.VISIBLE
-                    binding.statusTextView.text = "Giriş yapmak için butona tıklayın."
-                }
-                is SignInState.InProgress -> {
-                    binding.progressBar.visibility = View.VISIBLE
-                    binding.signInButton.visibility = View.GONE
-                    binding.statusTextView.text = "Giriş yapılıyor..."
-                }
-                is SignInState.Success -> {
-                    binding.progressBar.visibility = View.GONE
-                    binding.signInButton.visibility = View.GONE
-                    binding.statusTextView.text = "Hoş geldin, ${state.displayName}!"
-                    // TODO: Başarılı giriş sonrası bir sonraki ekrana geçiş kodu burada olacak.
-                }
-                is SignInState.Error -> {
-                    binding.progressBar.visibility = View.GONE
-                    binding.signInButton.visibility = View.VISIBLE
-                    binding.statusTextView.text = "Hata: ${state.message}"
-                }
-            }
-        }
-
-        viewModel.scanState.observe(this) { state ->
-            when (state) {
-                is ScanState.InProgress -> {
-                    binding.progressBar.visibility = View.VISIBLE
-                    binding.statusTextView.text = "Abonelikleriniz taranıyor..."
-                }
-                is ScanState.Success -> {
-                    binding.progressBar.visibility = View.GONE
-                    val count = state.subscriptions.size // Değişiklik
-                    binding.statusTextView.text = "Harika! $count adet farklı göndericiden abonelik bulundu."
-                    // TODO: Buradan yeni bir Fragment/Activity'e geçip listeyi göstereceğiz.
-                }
-                is ScanState.Error -> {
-                    binding.progressBar.visibility = View.GONE
-                    binding.statusTextView.text = "Hata: ${state.message}"
-                }
-                is ScanState.Idle -> {
-                    // Bir şey yapmaya gerek yok
-                }
-            }
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        Log.d("DEBUG", "Mevcut giriş bulundu, handleSignInSuccess çağrılıyor.")
-        val account = GoogleSignIn.getLastSignedInAccount(this)
-
-        if (account != null && GoogleSignIn.hasPermissions(account, Scope(GmailScopes.GMAIL_READONLY))) {
-            handleSignInSuccess(account)
-        } else {
-            // DOĞRU YÖNTEM: ViewModel'e durumu sıfırlamasını söyle.
-            viewModel.resetToIdleState()
-        }
-    }
-
     private fun handleSignInSuccess(account: GoogleSignInAccount) {
-        Log.d("DEBUG", "handleSignInSuccess içinde, startSubscriptionScan çağrılıyor.")
-        Log.d("MainActivity", "Giriş başarılı, tarama başlıyor: ${account.email}")
         viewModel.onSignInSuccess(account.displayName)
-
-        // BURASI EN KRİTİK NOKTA: Bu satır kesinlikle olmalı.
         viewModel.startSubscriptionScan(account)
+    }
+
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.scanState.collectLatest { state ->
+                when (state) {
+                    is ScanState.InProgress -> showLoadingView("Abonelikleriniz taranıyor...")
+                    is ScanState.Success -> showSubscriptionList()
+                    is ScanState.Error -> showSignInView(state.message)
+                    is ScanState.Idle -> { /* SignInState tarafından yönetilecek */ }
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.signInState.collectLatest { state ->
+                when (state) {
+                    is SignInState.InProgress -> showLoadingView("Giriş yapılıyor...")
+                    is SignInState.Idle -> showSignInView(null)
+                    is SignInState.Error -> showSignInView(state.message)
+                    is SignInState.Success -> { /* ScanState'e devredildi */ }
+                }
+            }
+        }
+    }
+
+    private fun showLoadingView(message: String) {
+        removeFragment()
+        binding.signInLayout.visibility = View.VISIBLE
+        binding.progressBar.visibility = View.VISIBLE
+        binding.signInButton.visibility = View.GONE
+        binding.statusTextView.text = message
+    }
+
+    private fun showSignInView(errorMessage: String?) {
+        removeFragment()
+        binding.signInLayout.visibility = View.VISIBLE
+        binding.progressBar.visibility = View.GONE
+        binding.signInButton.visibility = View.VISIBLE
+        binding.statusTextView.text = errorMessage ?: "Giriş yapmak için butona tıklayın."
+    }
+
+    private fun showSubscriptionList() {
+        binding.signInLayout.visibility = View.GONE
+        if (supportFragmentManager.findFragmentByTag("SubscriptionListFragment") == null) {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, SubscriptionListFragment::class.java, null, "SubscriptionListFragment")
+                .commit()
+        }
+    }
+
+    private fun removeFragment() {
+        supportFragmentManager.findFragmentByTag("SubscriptionListFragment")?.let {
+            supportFragmentManager.beginTransaction().remove(it).commit()
+        }
     }
 }
