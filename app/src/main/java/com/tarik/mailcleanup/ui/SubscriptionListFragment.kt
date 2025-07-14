@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.data.Subscription
 import com.tarik.mailcleanup.data.UnsubscribeAction
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
@@ -91,30 +92,47 @@ class SubscriptionListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.unsubscribeState.collectLatest { state ->
                 when (state) {
+                    is UnsubscribeState.InProgress -> {
+                        // Adapter'a hangi öğenin işlendiğini söyle
+                        subscriptionAdapter.setProcessingState(state.email)
+                    }
                     is UnsubscribeState.Success -> {
-                        // Aksiyonun türüne göre davran
-                        when (state.action) {
-                            is UnsubscribeAction.MailTo -> {
-                                Toast.makeText(context, "${state.email} için çıkış e-postası gönderildi.", Toast.LENGTH_SHORT).show()
-                            }
-                            is UnsubscribeAction.Http -> {
-                                Toast.makeText(context, "${state.email} için çıkış sayfası açılıyor...", Toast.LENGTH_SHORT).show()
-                                openUrlInCustomTab(state.action.url)
-                            }
-                            is UnsubscribeAction.NotFound -> {
-                                // Bu durum normalde Error state'ine düşer ama garanti olsun.
-                                Toast.makeText(context, "${state.email} için çıkış yöntemi bulunamadı.", Toast.LENGTH_LONG).show()
-                            }
+                        // İşlem başarılı olduğunda, o öğeyi listeden çıkaralım
+                        val currentList = subscriptionAdapter.getSubscriptions()
+                        val newList = currentList.filterNot { it.senderEmail == state.email }
+                        subscriptionAdapter.updateData(newList)
+                        
+                        val message = when (state.action) {
+                            is UnsubscribeAction.MailTo -> "${state.email} için çıkış e-postası gönderildi."
+                            is UnsubscribeAction.Http -> "Çıkış sayfası açılıyor..."
+                            else -> "İşlem başarılı."
+                        }
+                        showSnackbar(message)
+
+                        if(state.action is UnsubscribeAction.Http) {
+                           openUrlInCustomTab(state.action.url)
                         }
                     }
                     is UnsubscribeState.Error -> {
-                        Toast.makeText(context, "${state.email} için hata: ${state.message}", Toast.LENGTH_LONG).show()
+                        // Hata durumunda da listeyi eski haline getir
+                        subscriptionAdapter.updateData(subscriptionAdapter.getSubscriptions())
+                        showSnackbar("${state.email} için hata: ${state.message}", isError = true)
                     }
-                    is UnsubscribeState.InProgress, is UnsubscribeState.Idle -> {
-                        // Şu an için bir şey yapmıyoruz.
-                    }
+                    is UnsubscribeState.Idle -> { }
                 }
             }
+        }
+    }
+
+    // --- YENİ YARDIMCI FONKSİYON: Snackbar Gösterme ---
+    private fun showSnackbar(message: String, isError: Boolean = false) {
+        // Fragment'ın view'ı null değilse devam et
+        view?.let {
+            val snackbar = Snackbar.make(it, message, Snackbar.LENGTH_LONG)
+            if (isError) {
+                snackbar.setBackgroundTint(resources.getColor(com.google.android.material.R.color.design_default_color_error, null))
+            }
+            snackbar.show()
         }
     }
 

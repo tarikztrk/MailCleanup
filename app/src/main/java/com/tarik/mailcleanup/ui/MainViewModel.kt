@@ -85,17 +85,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch {
             _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
-            // Repository'deki yeni fonksiyonu çağırıyoruz.
             val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
             
             if (action !is UnsubscribeAction.NotFound) {
                 _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, action))
-                // Listeyi güncelleme mantığı aynı
-                val currentState = scanState.replayCache.firstOrNull()
-                if (currentState is ScanState.Success) {
-                    val newList = currentState.subscriptions.filterNot { it.senderEmail == subscription.senderEmail }
-                    _scanState.emit(ScanState.Success(newList))
-                }
+                // --- ARTIK LİSTEYİ BURADA GÜNCELLEMİYORUZ ---
+                // Bunun yerine, başarılı işlem sonrası taramayı yeniden tetikleyebiliriz
+                // veya Fragment'ın listeyi manuel olarak güncellemesini sağlayabiliriz.
+                // Şimdilik en basit yöntem: Fragment'a bırakalım.
             } else {
                 _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
             }

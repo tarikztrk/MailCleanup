@@ -11,8 +11,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentStart="true"
-        android:layout_toStartOf="@id/unsubscribeButton"
         android:layout_centerVertical="true"
+        android:layout_toStartOf="@id/actionLayout"
         android:orientation="vertical">
 
         <TextView
@@ -34,14 +34,31 @@
             tools:text="uzunbir.email.adresi@kampanya.trendyol.com" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/unsubscribeButton"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
+    <!-- Buton ve ProgressBar'ı içeren bir FrameLayout -->
+    <FrameLayout
+        android:id="@+id/actionLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
-        android:layout_marginStart="8dp"
-        android:text="Çık" />
+        android:layout_marginStart="8dp">
+
+        <Button
+            android:id="@+id/unsubscribeButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Çık" />
+
+        <ProgressBar
+            android:id="@+id/itemProgressBar"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+    </FrameLayout>
 
 </RelativeLayout>

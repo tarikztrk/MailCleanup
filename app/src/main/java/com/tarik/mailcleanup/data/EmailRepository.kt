@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import java.io.ByteArrayOutputStream
 import java.util.Properties
 import java.util.regex.Pattern
@@ -57,40 +58,73 @@ class EmailRepository(private val context: Context) {
                 val subscriptionsMap = mutableMapOf<String, Subscription>()
                 val processedEmails = processedDao.getAll().associateBy { it.senderEmail }
 
-                messageIds.chunked(30).map { chunk ->
+                messageIds.chunked(20).mapIndexed { chunkIndex, chunk ->
                     async {
-                        val batch = gmail.batch()
+                        var retryCount = 0
+                        val maxRetries = 3
+                        
+                        while (retryCount <= maxRetries) {
+                            try {
+                                val batch = gmail.batch()
 
-                        // --- HATA BURADAYDI: Callback'in tipi doğru olmalı ---
-                        val callback = object : JsonBatchCallback<Message>() {
-                            override fun onSuccess(message: Message, responseHeaders: HttpHeaders) {
-                                if (message.payload.headers.any { it.name.equals("List-Unsubscribe", ignoreCase = true) }) {
-                                    val fromHeader = message.payload.headers.find { it.name.equals("From", ignoreCase = true) }?.value ?: return
-                                    val (name, email) = parseSender(fromHeader)
-                                    val processedEntry = processedEmails[email]
-                                    val emailDate = message.internalDate ?: 0L
-                                    if (processedEntry == null || emailDate > processedEntry.processedAt) {
-                                        synchronized(subscriptionsMap) {
-                                            val subscription = subscriptionsMap.getOrPut(email) {
-                                                Subscription(senderName = name, senderEmail = email)
+                                val callback = object : JsonBatchCallback<Message>() {
+                                    override fun onSuccess(message: Message, responseHeaders: HttpHeaders) {
+                                        if (message.payload.headers.any { it.name.equals("List-Unsubscribe", ignoreCase = true) }) {
+                                            val fromHeader = message.payload.headers.find { it.name.equals("From", ignoreCase = true) }?.value ?: return
+                                            val (name, email) = parseSender(fromHeader)
+                                            val processedEntry = processedEmails[email]
+                                            val emailDate = message.internalDate ?: 0L
+                                            if (processedEntry == null || emailDate > processedEntry.processedAt) {
+                                                synchronized(subscriptionsMap) {
+                                                    val subscription = subscriptionsMap.getOrPut(email) {
+                                                        Subscription(senderName = name, senderEmail = email)
+                                                    }
+                                                    subscription.messageIds.add(message.id)
+                                                }
                                             }
-                                            subscription.messageIds.add(message.id)
                                         }
                                     }
+
+                                    override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
+                                        Log.e("EmailRepository", "Get Subscriptions Batch - onFailure: ${e.message}")
+                                    }
+                                }
+
+                                for (msg in chunk) {
+                                    gmail.users().messages().get("me", msg.id).setFormat("metadata")
+                                        .setFields("id,internalDate,payload/headers")
+                                        .queue(batch, callback)
+                                }
+                                
+                                batch.execute()
+                                Log.d("EmailRepository", "Abonelik tarama chunk'ı (${chunkIndex + 1}/${messageIds.chunked(20).size}) tamamlandı.")
+                                
+                                // Başarılı olursa döngüden çık
+                                break
+                                
+                            } catch (e: Exception) {
+                                retryCount++
+                                if (e.message?.contains("Too many concurrent requests") == true || 
+                                    e.message?.contains("Rate limit") == true) {
+                                    
+                                    Log.w("EmailRepository", "Abonelik taramada rate limit hatası, ${retryCount}. deneme. 1 saniye bekleniyor...")
+                                    delay(1000L * retryCount)
+                                    
+                                    if (retryCount > maxRetries) {
+                                        Log.e("EmailRepository", "Abonelik taramada maksimum retry sayısına ulaşıldı, chunk atlanıyor: ${e.message}")
+                                        break
+                                    }
+                                } else {
+                                    Log.e("EmailRepository", "Abonelik taramada beklenmeyen hata: ${e.message}")
+                                    break
                                 }
                             }
-
-                            override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
-                                Log.e("EmailRepository", "Get Subscriptions Batch - onFailure: ${e.message}")
-                            }
                         }
-
-                        for (msg in chunk) {
-                            gmail.users().messages().get("me", msg.id).setFormat("metadata")
-                                .setFields("id,internalDate,payload/headers")
-                                .queue(batch, callback)
+                        
+                        // Chunk'lar arasında kısa gecikme
+                        if (chunkIndex < messageIds.chunked(20).size - 1) {
+                            delay(300L)
                         }
-                        batch.execute()
                     }
                 }.awaitAll()
 
@@ -157,6 +191,8 @@ class EmailRepository(private val context: Context) {
             Log.d("EmailRepository", "$senderEmail adresinden gelen e-postalar temizleniyor...")
             val allMessageIds = mutableListOf<String>()
             var pageToken: String? = null
+            
+            // Tüm mesaj ID'lerini topla
             do {
                 val response = gmail.users().messages().list("me")
                     .setQ("from:$senderEmail")
@@ -174,19 +210,56 @@ class EmailRepository(private val context: Context) {
 
             Log.d("EmailRepository", "${allMessageIds.size} adet e-posta bulundu, çöp kutusuna taşınıyor.")
 
-            allMessageIds.chunked(100).forEach { chunk ->
-                val batch = gmail.batch()
-                val callback = object : JsonBatchCallback<Message>() {
-                    override fun onSuccess(message: Message?, responseHeaders: HttpHeaders?) {}
-                    override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
-                        Log.e("EmailRepository", "Toplu silme işleminde bir alt istek başarısız: ${e.message}")
+            // Batch boyutunu küçültüyoruz (100'den 10'a) ve istekler arasında gecikme ekliyoruz
+            allMessageIds.chunked(10).forEachIndexed { index, chunk ->
+                var retryCount = 0
+                val maxRetries = 3
+                
+                while (retryCount <= maxRetries) {
+                    try {
+                        val batch = gmail.batch()
+                        val callback = object : JsonBatchCallback<Message>() {
+                            override fun onSuccess(message: Message?, responseHeaders: HttpHeaders?) {
+                                // Başarılı silme işlemi
+                            }
+                            override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
+                                Log.e("EmailRepository", "Toplu silme işleminde bir alt istek başarısız: ${e.message}")
+                            }
+                        }
+                        
+                        for (id in chunk) {
+                            gmail.users().messages().trash("me", id).queue(batch, callback)
+                        }
+                        
+                        batch.execute()
+                        Log.d("EmailRepository", "${chunk.size} boyutlu silme chunk'ı (${index + 1}/${allMessageIds.chunked(10).size}) işlendi.")
+                        
+                        // Başarılı olursa döngüden çık
+                        break
+                        
+                    } catch (e: Exception) {
+                        retryCount++
+                        if (e.message?.contains("Too many concurrent requests") == true || 
+                            e.message?.contains("Rate limit") == true) {
+                            
+                            Log.w("EmailRepository", "Rate limit hatası, ${retryCount}. deneme. 2 saniye bekleniyor...")
+                            delay(2000L * retryCount) // Exponential backoff
+                            
+                            if (retryCount > maxRetries) {
+                                Log.e("EmailRepository", "Maksimum retry sayısına ulaşıldı, chunk atlanıyor: ${e.message}")
+                                break
+                            }
+                        } else {
+                            Log.e("EmailRepository", "Beklenmeyen hata: ${e.message}")
+                            break
+                        }
                     }
                 }
-                for (id in chunk) {
-                    gmail.users().messages().trash("me", id).queue(batch, callback)
+                
+                // Her chunk arasında kısa bir gecikme
+                if (index < allMessageIds.chunked(10).size - 1) {
+                    delay(500L)
                 }
-                batch.execute()
-                Log.d("EmailRepository", "${chunk.size} boyutlu bir silme chunk'ı işlendi.")
             }
 
             Log.d("EmailRepository", "Temizleme işlemi tamamlandı.")
