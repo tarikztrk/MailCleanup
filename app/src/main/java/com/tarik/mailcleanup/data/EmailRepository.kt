@@ -129,7 +129,12 @@ class EmailRepository(private val context: Context) {
                 }.awaitAll()
 
                 Log.d("EmailRepository", "Filtrelenmiş ve gruplanmış abonelik sayısı: ${subscriptionsMap.values.size}")
-                subscriptionsMap.values.toList().sortedBy { it.senderName }
+                // Haritayı listeye çevirirken emailCount'u doldur
+                val resultList = subscriptionsMap.values.map {
+                    it.copy(emailCount = it.messageIds.size)
+                }.sortedBy { it.senderName }
+
+                resultList // Bu listeyi döndür
             } catch (e: Exception) {
                 if (e is com.google.api.client.http.HttpResponseException) {
                     Log.e("EmailRepository", "HTTP Hatası: ${e.statusCode} - ${e.content}", e)
@@ -182,6 +187,22 @@ class EmailRepository(private val context: Context) {
             } catch (e: Exception) {
                 Log.e("EmailRepository", "Abonelikten çıkma hatası", e)
                 UnsubscribeAction.NotFound
+            }
+        }
+    }
+
+    suspend fun keepSubscription(subscription: Subscription) {
+        return withContext(Dispatchers.IO) {
+            try {
+                val record = ProcessedSubscription(
+                    senderEmail = subscription.senderEmail,
+                    status = "WHITELISTED",
+                    processedAt = System.currentTimeMillis()
+                )
+                processedDao.insert(record)
+                Log.d("EmailRepository", "${subscription.senderEmail} veritabanına 'WHITELISTED' olarak eklendi.")
+            } catch (e: Exception) {
+                Log.e("EmailRepository", "Abonelik koruma hatası", e)
             }
         }
     }

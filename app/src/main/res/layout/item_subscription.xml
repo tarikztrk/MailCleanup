@@ -31,6 +31,19 @@
             android:textColor="@android:color/white"
             tools:text="T" />
 
+        <!-- E-posta Sayısı Etiketi -->
+        <com.google.android.material.chip.Chip
+            android:id="@+id/emailCountChip"
+            style="@style/Widget.MaterialComponents.Chip.Action"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            app:chipIcon="@drawable/ic_email"
+            app:chipIconSize="16dp"
+            android:textSize="12sp"
+            tools:text="84" />
+
         <LinearLayout
             android:id="@+id/infoLayout"
             android:layout_width="match_parent"
@@ -63,30 +76,49 @@
                 tools:text="kampanya@trendyol.com" />
         </LinearLayout>
 
-        <FrameLayout
+        <!-- Butonları içeren yeni bir LinearLayout -->
+        <LinearLayout
             android:id="@+id/actionLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:layout_marginStart="8dp">
+            android:layout_below="@id/emailCountChip"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
 
+            <!-- Keep Butonu -->
+            <ImageButton
+                android:id="@+id/keepButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="8dp"
+                android:src="@drawable/ic_keep_outline"
+                app:tint="?attr/colorControlNormal"
+                tools:ignore="ContentDescription" />
+            
+            <!-- Çık Butonu -->
             <Button
                 android:id="@+id/unsubscribeButton"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
                 android:text="Çık" />
-
-            <ProgressBar
-                android:id="@+id/itemProgressBar"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:visibility="gone" />
-
-        </FrameLayout>
+                
+        </LinearLayout>
+        
+        <!-- Yükleme Göstergesi (actionLayout'un yerine geçecek) -->
+        <ProgressBar
+            android:id="@+id/itemProgressBar"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_below="@id/emailCountChip"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone" />
 
     </RelativeLayout>
 </com.google.android.material.card.MaterialCardView>

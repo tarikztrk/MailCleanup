@@ -10,7 +10,8 @@ import com.tarik.mailcleanup.databinding.ItemSubscriptionBinding
 
 class SubscriptionAdapter(
     private var subscriptions: List<Subscription>,
-    private val onUnsubscribeClicked: (Subscription) -> Unit
+    private val onUnsubscribeClicked: (Subscription) -> Unit,
+    private val onKeepClicked: (Subscription) -> Unit // YENİ: Keep butonu için callback
 ) : RecyclerView.Adapter<SubscriptionAdapter.SubscriptionViewHolder>() {
 
     // Yükleniyor durumundaki e-postanın adresini tutacak değişken
@@ -35,6 +36,9 @@ class SubscriptionAdapter(
         holder.binding.senderNameTextView.text = subscription.senderName
         holder.binding.senderEmailTextView.text = subscription.senderEmail
         
+        // E-posta sayısını Chip'e yazdır
+        holder.binding.emailCountChip.text = subscription.emailCount.toString()
+        
         // --- YENİ: İKONU AYARLA ---
         // Gönderen adının ilk harfini al, boş değilse.
         val initial = subscription.senderName.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
@@ -45,16 +49,22 @@ class SubscriptionAdapter(
         if (subscription.senderEmail == processingEmail) {
             // Bu öğe şu an işleniyor
             holder.binding.unsubscribeButton.visibility = View.INVISIBLE // Butonu tamamen yok etmek yerine görünmez yap
+            holder.binding.keepButton.visibility = View.INVISIBLE // Keep butonunu da gizle
             holder.binding.itemProgressBar.visibility = View.VISIBLE
         } else {
             // Normal durum
             holder.binding.unsubscribeButton.visibility = View.VISIBLE
+            holder.binding.keepButton.visibility = View.VISIBLE
             holder.binding.itemProgressBar.visibility = View.GONE
         }
         // ---------------------------------------------
 
+        // Tıklama dinleyicilerini ayarla
         holder.binding.unsubscribeButton.setOnClickListener {
             onUnsubscribeClicked(subscription)
+        }
+        holder.binding.keepButton.setOnClickListener {
+            onKeepClicked(subscription)
         }
     }
 

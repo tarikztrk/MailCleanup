@@ -48,10 +48,17 @@ class SubscriptionListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        subscriptionAdapter = SubscriptionAdapter(emptyList()) { subscription ->
-            // Artık doğrudan ViewModel'i çağırmıyoruz, önce diyalog gösteriyoruz.
-            showUnsubscribeConfirmationDialog(subscription)
-        }
+        subscriptionAdapter = SubscriptionAdapter(
+            subscriptions = emptyList(),
+            onUnsubscribeClicked = { subscription ->
+                // Artık doğrudan ViewModel'i çağırmıyoruz, önce diyalog gösteriyoruz.
+                showUnsubscribeConfirmationDialog(subscription)
+            },
+            onKeepClicked = { subscription ->
+                // Keep butonuna tıklandığında
+                showKeepConfirmationDialog(subscription)
+            }
+        )
         binding.subscriptionsRecyclerView.adapter = subscriptionAdapter
         binding.subscriptionsRecyclerView.addItemDecoration(
             DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
@@ -77,6 +84,18 @@ class SubscriptionListFragment : Fragment() {
                 }
             }
             .setNeutralButton("İptal", null) // "İptal" butonu hiçbir şey yapmaz, diyalog kapanır.
+            .show()
+    }
+
+    // --- YENİ FONKSİYON: Keep Onay Diyaloğu ---
+    private fun showKeepConfirmationDialog(subscription: Subscription) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Aboneliği Koru?")
+            .setMessage("'${subscription.senderName}' aboneliği beyaz listeye eklenecek ve bir sonraki taramada gösterilmeyecek.")
+            .setPositiveButton("Evet, Koru") { dialog, which ->
+                viewModel.keepSubscription(subscription)
+            }
+            .setNegativeButton("İptal", null)
             .show()
     }
 
@@ -119,6 +138,31 @@ class SubscriptionListFragment : Fragment() {
                         showSnackbar("${state.email} için hata: ${state.message}", isError = true)
                     }
                     is UnsubscribeState.Idle -> { }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.keepState.collectLatest { state ->
+                when (state) {
+                    is KeepState.InProgress -> {
+                        // Adapter'a hangi öğenin işlendiğini söyle
+                        subscriptionAdapter.setProcessingState(state.email)
+                    }
+                    is KeepState.Success -> {
+                        // İşlem başarılı olduğunda, o öğeyi listeden çıkaralım
+                        val currentList = subscriptionAdapter.getSubscriptions()
+                        val newList = currentList.filterNot { it.senderEmail == state.email }
+                        subscriptionAdapter.updateData(newList)
+                        
+                        showSnackbar("${state.email} beyaz listeye eklendi.")
+                    }
+                    is KeepState.Error -> {
+                        // Hata durumunda da listeyi eski haline getir
+                        subscriptionAdapter.updateData(subscriptionAdapter.getSubscriptions())
+                        showSnackbar("${state.email} için hata: ${state.message}", isError = true)
+                    }
+                    is KeepState.Idle -> { }
                 }
             }
         }

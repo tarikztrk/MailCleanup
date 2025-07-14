@@ -32,6 +32,13 @@ sealed class UnsubscribeState {
     data class Error(val email: String, val message: String) : UnsubscribeState()
 }
 
+sealed class KeepState {
+    object Idle : KeepState()
+    data class InProgress(val email: String) : KeepState()
+    data class Success(val email: String) : KeepState()
+    data class Error(val email: String, val message: String) : KeepState()
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = EmailRepository(application.applicationContext)
@@ -44,6 +51,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _unsubscribeState = MutableSharedFlow<UnsubscribeState>()
     val unsubscribeState = _unsubscribeState.asSharedFlow()
+
+    private val _keepState = MutableSharedFlow<KeepState>()
+    val keepState = _keepState.asSharedFlow()
 
     init {
         resetToIdleState()
@@ -95,6 +105,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Şimdilik en basit yöntem: Fragment'a bırakalım.
             } else {
                 _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
+            }
+        }
+    }
+
+    fun keepSubscription(subscription: Subscription) {
+        viewModelScope.launch {
+            _keepState.emit(KeepState.InProgress(subscription.senderEmail))
+            try {
+                repository.keepSubscription(subscription)
+                _keepState.emit(KeepState.Success(subscription.senderEmail))
+            } catch (e: Exception) {
+                _keepState.emit(KeepState.Error(subscription.senderEmail, "Abonelik korunamadı: ${e.message}"))
             }
         }
     }
