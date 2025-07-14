@@ -34,6 +34,12 @@ class SubscriptionAdapter(
         val subscription = subscriptions[position]
         holder.binding.senderNameTextView.text = subscription.senderName
         holder.binding.senderEmailTextView.text = subscription.senderEmail
+        
+        // --- YENİ: İKONU AYARLA ---
+        // Gönderen adının ilk harfini al, boş değilse.
+        val initial = subscription.senderName.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
+        holder.binding.senderIconTextView.text = initial
+        // ------------------------
 
         // --- YENİ MANTIK: Yüklenme Durumunu Kontrol Et ---
         if (subscription.senderEmail == processingEmail) {

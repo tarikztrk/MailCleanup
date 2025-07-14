@@ -1,64 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?android:attr/selectableItemBackground"
-    android:padding="16dp">
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
 
-    <LinearLayout
-        android:id="@+id/infoLayout"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_centerVertical="true"
-        android:layout_toStartOf="@id/actionLayout"
-        android:orientation="vertical">
+        android:padding="16dp">
 
+        <!-- Gönderici İkonu (İlk Harf) -->
         <TextView
-            android:id="@+id/senderNameTextView"
+            android:id="@+id/senderIconTextView"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/circle_background"
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+            android:textColor="@android:color/white"
+            tools:text="T" />
+
+        <LinearLayout
+            android:id="@+id/infoLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textStyle="bold"
-            tools:text="Oldukça Uzun Bir Gönderici Adı Denemesi" />
+            android:layout_centerVertical="true"
+            android:layout_toStartOf="@id/actionLayout"
+            android:layout_toEndOf="@id/senderIconTextView"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/senderEmailTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-            android:textColor="?android:attr/textColorSecondary"
-            tools:text="uzunbir.email.adresi@kampanya.trendyol.com" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/senderNameTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+                android:textColor="?android:attr/textColorPrimary"
+                android:textStyle="bold"
+                tools:text="Trendyol" />
 
-    <!-- Buton ve ProgressBar'ı içeren bir FrameLayout -->
-    <FrameLayout
-        android:id="@+id/actionLayout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_centerVertical="true"
-        android:layout_marginStart="8dp">
+            <TextView
+                android:id="@+id/senderEmailTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?android:attr/textColorSecondary"
+                tools:text="kampanya@trendyol.com" />
+        </LinearLayout>
 
-        <Button
-            android:id="@+id/unsubscribeButton"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+        <FrameLayout
+            android:id="@+id/actionLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Çık" />
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="8dp">
 
-        <ProgressBar
-            android:id="@+id/itemProgressBar"
-            style="?android:attr/progressBarStyleSmall"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:visibility="gone"
-            tools:visibility="visible" />
+            <Button
+                android:id="@+id/unsubscribeButton"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Çık" />
 
-    </FrameLayout>
+            <ProgressBar
+                android:id="@+id/itemProgressBar"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone" />
 
-</RelativeLayout>
+        </FrameLayout>
+
+    </RelativeLayout>
+</com.google.android.material.card.MaterialCardView>
