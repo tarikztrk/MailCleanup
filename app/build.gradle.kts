@@ -1,99 +1,87 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    id("com.google.devtools.ksp") version "1.9.23-1.0.19" // Versiyonu kontrol et
+    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.tarik.mailcleanup"
-    compileSdk = 35
+    compileSdk = 34 // 35 yerine stabil 34 kullanalım
 
     defaultConfig {
         applicationId = "com.tarik.mailcleanup"
         minSdk = 27
-        targetSdk = 35
+        targetSdk = 34 // compileSdk ile aynı olmalı
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    // Çoğu kütüphane ile en uyumlu versiyonlar
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "1.8"
     }
+
     buildFeatures {
         viewBinding = true
     }
+
+    // Tek ve doğru paketleme bloğu
     packaging {
         resources {
-            pickFirsts.add("META-INF/DEPENDENCIES")
+            excludes += "/META-INF/**"
         }
     }
 }
 
 dependencies {
 
-    // Mevcut kütüphaneler...
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    // TEMEL ANDROIDX
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.activity)
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation("androidx.browser:browser:1.8.0")
 
-    // === MVVM & Lifecycle Kütüphaneleri ===
-
-    implementation("androidx.activity:activity-ktx:1.10.1")
-
-    // ViewModel
+    // LIFECYCLE & VIEWMODEL
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    // LiveData
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
-    // Lifecycle (Activity/Fragment yaşam döngüsü için)
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
-    // === Asenkron İşlemler için Coroutines ===
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    // COROUTINES
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // === Google API Kütüphaneleri ===
-    // Google ile Güvenli Giriş (OAuth 2.0)
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
-    
-    // Gmail API
-    implementation("com.google.apis:google-api-services-gmail:v1-rev20220404-2.0.0")
-    
-    // Google API Client Core ve Android Extensions
-    implementation("com.google.api-client:google-api-client-android:2.2.0")
-    implementation("com.google.api-client:google-api-client-gson:2.2.0")
-    
-    // HTTP Client kütüphaneleri
-    implementation("com.google.http-client:google-http-client-gson:1.44.1")
-    implementation("com.google.http-client:google-http-client-android:1.44.1")
-    
-    // Google OAuth2 ve Auth kütüphaneleri
-    implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
-
-    // (Not: Gmail API versiyonları değişebilir, en güncellerini kullanmak iyi bir pratiktir.)
-
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
-
+    // ROOM
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
-    ksp("androidx.room:room-compiler:$room_version") // Annotation processor
-    // Coroutine desteği için
     implementation("androidx.room:room-ktx:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
 
+    // --- GOOGLE & GMAIL KÜTÜPHANELERİ (SADELEŞTİRİLMİŞ) ---
+    // Sadece bu 3 satır gerekli. Diğerleri (http, gson, auth) bunlar tarafından dolaylı olarak eklenir.
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.api-client:google-api-client-android:2.4.0")
+    implementation("com.google.apis:google-api-services-gmail:v1-rev20220404-2.0.0")
+    // ----------------------------------------------------
 
+    // E-POSTA GÖNDERME (javax.mail)
+    implementation("com.sun.mail:android-mail:1.6.7")
+    implementation("com.sun.mail:android-activation:1.6.7")
+
+    // TEST
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

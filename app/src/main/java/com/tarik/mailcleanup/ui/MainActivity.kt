@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         val account = GoogleSignIn.getLastSignedInAccount(this)
-        if (account != null && GoogleSignIn.hasPermissions(account, Scope(GmailScopes.GMAIL_READONLY))) {
+        if (account != null && GoogleSignIn.hasPermissions(account, Scope(GmailScopes.GMAIL_MODIFY))) {
             handleSignInSuccess(account)
         } else {
             viewModel.resetToIdleState()
@@ -64,7 +64,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun configureGoogleSignIn() {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestScopes(Scope(GmailScopes.GMAIL_READONLY))
+            // İZNİ GMAIL_MODIFY OLARAK GÜNCELLİYORUZ
+            // Bu, okuma, oluşturma ve gönderme yetkisi verir.
+            .requestScopes(Scope(GmailScopes.GMAIL_MODIFY))
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)

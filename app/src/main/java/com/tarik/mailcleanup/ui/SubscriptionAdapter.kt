@@ -8,7 +8,8 @@ import com.tarik.mailcleanup.data.Subscription
 import com.tarik.mailcleanup.databinding.ItemSubscriptionBinding
 
 class SubscriptionAdapter(
-    private var subscriptions: List<Subscription>
+    private var subscriptions: List<Subscription>,
+    private val onUnsubscribeClicked: (Subscription) -> Unit
 ) : RecyclerView.Adapter<SubscriptionAdapter.SubscriptionViewHolder>() {
 
     inner class SubscriptionViewHolder(val binding: ItemSubscriptionBinding) :
@@ -29,6 +30,10 @@ class SubscriptionAdapter(
         val subscription = subscriptions[position]
         holder.binding.senderNameTextView.text = subscription.senderName
         holder.binding.senderEmailTextView.text = subscription.senderEmail
+
+        holder.binding.unsubscribeButton.setOnClickListener {
+            onUnsubscribeClicked(subscription)
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
