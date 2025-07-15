@@ -16,7 +16,33 @@
         android:paddingBottom="4dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/item_subscription" />
+    
+    <!-- YENİ: Boş Durum Ekranı -->
+    <LinearLayout
+        android:id="@+id/emptyStateLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
 
-    <!-- Boş durum ekranı için view'lar buraya eklenebilir -->
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_mailbox_clean"
+            app:tint="?attr/colorControlNormal"
+            android:contentDescription="Temiz Posta Kutusu" />
+
+        <TextView
+            android:id="@+id/emptyStateTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Tebrikler, tüm abonelikler temizlendi!"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+            android:textColor="?android:attr/textColorSecondary" />
+    </LinearLayout>
 
 </FrameLayout>

@@ -326,9 +326,21 @@ class EmailRepository(private val context: Context) {
         email.writeTo(buffer)
         val rawMessageBytes = buffer.toByteArray()
         val encodedEmail = Base64.encodeBase64URLSafeString(rawMessageBytes)
-        val message = Message().setRaw(encodedEmail)
+        val messageToSend = Message().setRaw(encodedEmail)
 
-        gmail.users().messages().send("me", message).execute()
+        // 1. E-postayı gönder ve gönderilmiş mesajın kendisini geri al.
+        val sentMessage = gmail.users().messages().send("me", messageToSend).execute()
+        Log.d("EmailRepository", "Unsubscribe e-postası gönderildi. ID: ${sentMessage.id}")
+
+        // 2. Gönderilmiş olan bu e-postayı, ID'sini kullanarak hemen çöp kutusuna taşı.
+        try {
+            gmail.users().messages().trash("me", sentMessage.id).execute()
+            Log.d("EmailRepository", "Gönderilmiş unsubscribe e-postası çöp kutusuna taşındı.")
+        } catch (e: Exception) {
+            // Bu işlem başarısız olursa, ana işlemi engellememeli.
+            // Sadece loglayıp devam et.
+            Log.e("EmailRepository", "Gönderilmiş unsubscribe e-postasını silerken hata oluştu.", e)
+        }
     }
 
     private fun parseSender(fromHeader: String): Pair<String, String> {

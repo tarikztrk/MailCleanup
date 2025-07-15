@@ -28,7 +28,7 @@ sealed class ScanState {
 sealed class UnsubscribeState {
     object Idle : UnsubscribeState()
     data class InProgress(val email: String) : UnsubscribeState()
-    data class Success(val email: String, val action: UnsubscribeAction) : UnsubscribeState() // Artık aksiyonu da taşıyor
+    data class Success(val email: String, val action: UnsubscribeAction) : UnsubscribeState()
     data class Error(val email: String, val message: String) : UnsubscribeState()
 }
 
@@ -42,21 +42,17 @@ sealed class KeepState {
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = EmailRepository(application.applicationContext)
-    
-    // Geçici olarak silinen öğeyi tutacak değişken
-    private var lastRemovedSubscription: Subscription? = null
-
     private val _signInState = MutableSharedFlow<SignInState>(replay = 1)
     val signInState = _signInState.asSharedFlow()
-
     private val _scanState = MutableSharedFlow<ScanState>(replay = 1)
     val scanState = _scanState.asSharedFlow()
-
     private val _unsubscribeState = MutableSharedFlow<UnsubscribeState>()
     val unsubscribeState = _unsubscribeState.asSharedFlow()
-
     private val _keepState = MutableSharedFlow<KeepState>()
     val keepState = _keepState.asSharedFlow()
+
+    // --- YENİ: Geri Alma Mantığı İçin ---
+    private var lastAction: (() -> Unit)? = null
 
     init {
         resetToIdleState()
@@ -91,62 +87,74 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _scanState.tryEmit(ScanState.Idle)
     }
 
-    fun unsubscribeAndClean(
-        account: GoogleSignInAccount,
-        subscription: Subscription,
-        cleanEmails: Boolean // Yeni parametre
-    ) {
+    fun unsubscribeAndClean(account: GoogleSignInAccount, subscription: Subscription, cleanEmails: Boolean) {
         viewModelScope.launch {
             _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
+
+            // Önce UI'ı güncelle
+            val originalList = (scanState.replayCache.firstOrNull() as? ScanState.Success)?.subscriptions
+            val newList = originalList?.filterNot { it.senderEmail == subscription.senderEmail }
+            if (newList != null) {
+                _scanState.emit(ScanState.Success(newList))
+            }
+
+            // Geri alma eylemini hazırla
+            lastAction = {
+                // Listeyi eski haline getir
+                if (originalList != null) {
+                    _scanState.tryEmit(ScanState.Success(originalList))
+                }
+            }
+
+            // Arka planda gerçek işlemi yap
             val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
             
             if (action !is UnsubscribeAction.NotFound) {
                 _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, action))
-                // --- ARTIK LİSTEYİ BURADA GÜNCELLEMİYORUZ ---
-                // Bunun yerine, başarılı işlem sonrası taramayı yeniden tetikleyebiliriz
-                // veya Fragment'ın listeyi manuel olarak güncellemesini sağlayabiliriz.
-                // Şimdilik en basit yöntem: Fragment'a bırakalım.
             } else {
                 _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
+                // Hata durumunda listeyi geri yükle
+                lastAction?.invoke() 
             }
         }
     }
-
+    
     fun keepSubscription(subscription: Subscription) {
         viewModelScope.launch {
-            // Öğeyi listeden çıkarmadan önce sakla
-            lastRemovedSubscription = subscription
-            // Önce UI'ı güncelle
-            val currentState = scanState.replayCache.firstOrNull()
-            if (currentState is ScanState.Success) {
-                val newList = currentState.subscriptions.filterNot { it.senderEmail == subscription.senderEmail }
-                _scanState.tryEmit(ScanState.Success(newList))
+            val originalList = (scanState.replayCache.firstOrNull() as? ScanState.Success)?.subscriptions
+            val newList = originalList?.filterNot { it.senderEmail == subscription.senderEmail }
+            if (newList != null) {
+                _scanState.emit(ScanState.Success(newList))
             }
-            // Sonra sonucu bildir
-            _keepState.emit(KeepState.Success(subscription.senderEmail))
+
+            lastAction = {
+                if (originalList != null) {
+                    _scanState.tryEmit(ScanState.Success(originalList))
+                }
+            }
+            
+            try {
+                repository.keepSubscription(subscription)
+                _keepState.emit(KeepState.Success(subscription.senderEmail))
+            } catch (e: Exception) {
+                _keepState.emit(KeepState.Error(subscription.senderEmail, "Hata oluştu"))
+                lastAction?.invoke()
+            }
         }
     }
-
-    // YENİ FONKSİYON: "Keep" işlemini kalıcı hale getir veya geri al
-    fun finalizeKeepAction() {
-        viewModelScope.launch {
-            lastRemovedSubscription?.let {
-                repository.keepSubscription(it)
-                lastRemovedSubscription = null // Geçici veriyi temizle
-            }
-        }
+    
+    // YENİ FONKSİYON
+    fun undoLastAction() {
+        lastAction?.invoke()
+        lastAction = null // Geri alma eylemi bir kez kullanılabilir.
     }
 
     // YENİ FONKSİYON
-    fun undoKeepAction() {
-        // Geri alma durumunda listeyi eski haline getir
-        val currentState = scanState.replayCache.firstOrNull()
-        if (currentState is ScanState.Success && lastRemovedSubscription != null) {
-            // .toMutableList() ile kopyasını alıp üzerinde değişiklik yapıyoruz.
-            val restoredList = currentState.subscriptions.toMutableList()
-            restoredList.add(lastRemovedSubscription!!)
-            _scanState.tryEmit(ScanState.Success(restoredList.sortedByDescending { it.emailCount }))
-            lastRemovedSubscription = null // Geçici veriyi temizle
-        }
+    fun finalizeLastAction() {
+        // Bu fonksiyon, Snackbar kaybolduğunda çağrılır.
+        // 'lastAction' veritabanı işlemini içerseydi, burada tetiklenirdi.
+        // Mevcut yapıda, işlem hemen yapıldığı için bu fonksiyonu boş bırakabiliriz
+        // veya sadece geçici veriyi temizleyebiliriz.
+        lastAction = null
     }
 }
