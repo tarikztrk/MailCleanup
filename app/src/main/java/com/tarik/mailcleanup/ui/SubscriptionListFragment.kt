@@ -13,6 +13,8 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -57,6 +59,23 @@ class SubscriptionListFragment : Fragment() {
         binding.subscriptionsRecyclerView.addItemDecoration(
             DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
         )
+        
+        // Sonsuz kaydırma için scroll listener ekle
+        binding.subscriptionsRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                val lastVisibleItemPosition = layoutManager.findLastVisibleItemPosition()
+                val totalItemCount = layoutManager.itemCount
+                
+                if (totalItemCount > 0 && lastVisibleItemPosition >= totalItemCount - 5) {
+                    // ViewModel'e daha fazla veri yüklemesi için sinyal gönder
+                    currentAccount?.let { account ->
+                        viewModel.loadMoreSubscriptions(account)
+                    }
+                }
+            }
+        })
     }
 
     private fun showUnsubscribeConfirmationDialog(subscription: Subscription) {
@@ -113,6 +132,27 @@ class SubscriptionListFragment : Fragment() {
                  when (state) {
                     is KeepState.Success -> showUndoSnackbar("'${state.email}' korunanlara eklendi.")
                     is KeepState.Error -> showSnackbar("'${state.email}' korunurken bir hata oluştu.", isError = true)
+                    else -> {}
+                }
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.loadMoreState.collectLatest { state ->
+                when (state) {
+                    is LoadMoreState.InProgress -> {
+                        // Yükleme göstergesi (opsiyonel)
+                        Log.d("SubscriptionListFragment", "Daha fazla abonelik yükleniyor...")
+                    }
+                    is LoadMoreState.Success -> {
+                        Log.d("SubscriptionListFragment", "Daha fazla abonelik başarıyla yüklendi")
+                    }
+                    is LoadMoreState.NoMoreData -> {
+                        Log.d("SubscriptionListFragment", "Daha fazla abonelik bulunamadı")
+                    }
+                    is LoadMoreState.Error -> {
+                        showSnackbar(state.message, isError = true)
+                    }
                     else -> {}
                 }
             }

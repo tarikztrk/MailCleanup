@@ -20,6 +20,9 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import java.util.Properties
 import java.util.regex.Pattern
 import javax.mail.Session
@@ -36,7 +39,11 @@ class EmailRepository(private val context: Context) {
 
     private val processedDao = AppDatabase.getDatabase(context).processedSubscriptionDao()
 
-    suspend fun getSubscriptions(account: GoogleSignInAccount): List<Subscription> {
+    suspend fun getSubscriptions(
+        account: GoogleSignInAccount, 
+        startDate: Calendar, 
+        endDate: Calendar
+    ): List<Subscription> {
         return withContext(Dispatchers.IO) {
             try {
                 val credential = GoogleAccountCredential.usingOAuth2(context, listOf(GmailScopes.GMAIL_MODIFY))
@@ -46,9 +53,17 @@ class EmailRepository(private val context: Context) {
                     .setApplicationName("Mail Cleanup")
                     .build()
 
-                Log.d("EmailRepository", "Geniş sorgu başlatılıyor: category:promotions newer_than:30d")
+                // Tarihleri Gmail API formatına (YYYY/MM/DD) çevir
+                val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.US)
+                val afterDate = dateFormat.format(startDate.time)
+                val beforeDate = dateFormat.format(endDate.time)
+                
+                // Sorguyu dinamik olarak oluştur
+                val query = "category:promotions after:$afterDate before:$beforeDate"
+                Log.d("EmailRepository", "Sorgu başlatılıyor: $query")
+
                 val messageIdResponse = gmail.users().messages().list("me")
-                    .setQ("category:promotions newer_than:30d")
+                    .setQ(query)
                     .setMaxResults(500)
                     .execute()
 
@@ -58,7 +73,7 @@ class EmailRepository(private val context: Context) {
                 val subscriptionsMap = mutableMapOf<String, Subscription>()
                 val processedEmails = processedDao.getAll().associateBy { it.senderEmail }
 
-                messageIds.chunked(20).mapIndexed { chunkIndex, chunk ->
+                messageIds.chunked(10).mapIndexed { chunkIndex, chunk ->
                     async {
                         var retryCount = 0
                         val maxRetries = 3
@@ -128,11 +143,12 @@ class EmailRepository(private val context: Context) {
                     }
                 }.awaitAll()
 
-                Log.d("EmailRepository", "Filtrelenmiş ve gruplanmış abonelik sayısı: ${subscriptionsMap.values.size}")
-                // Haritayı listeye çevirirken emailCount'u doldur
+                Log.d("EmailRepository", "Gruplanmış abonelik sayısı: ${subscriptionsMap.values.size}")
+                
+                // SIRALAMAYI KALDIRDIK. ViewModel bu işi yapacak.
                 val resultList = subscriptionsMap.values.map {
                     it.copy(emailCount = it.messageIds.size)
-                }.sortedBy { it.senderName }
+                }
 
                 resultList // Bu listeyi döndür
             } catch (e: Exception) {

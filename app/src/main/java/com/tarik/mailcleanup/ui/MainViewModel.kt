@@ -1,6 +1,7 @@
 package com.tarik.mailcleanup.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -10,6 +11,7 @@ import com.tarik.mailcleanup.data.UnsubscribeAction
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 sealed class SignInState {
     object Idle : SignInState()
@@ -39,6 +41,14 @@ sealed class KeepState {
     data class Error(val email: String, val message: String) : KeepState()
 }
 
+sealed class LoadMoreState {
+    object Idle : LoadMoreState()
+    object InProgress : LoadMoreState()
+    object Success : LoadMoreState()
+    object NoMoreData : LoadMoreState()
+    data class Error(val message: String) : LoadMoreState()
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = EmailRepository(application.applicationContext)
@@ -50,9 +60,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val unsubscribeState = _unsubscribeState.asSharedFlow()
     private val _keepState = MutableSharedFlow<KeepState>()
     val keepState = _keepState.asSharedFlow()
+    private val _loadMoreState = MutableSharedFlow<LoadMoreState>(replay = 1)
+    val loadMoreState = _loadMoreState.asSharedFlow()
 
     // --- YENİ: Geri Alma Mantığı İçin ---
     private var lastAction: (() -> Unit)? = null
+
+    // --- YENİ: Dinamik Tarih Aralığı Yönetimi ---
+    private var lastEndDate: Calendar? = null
+    private var isLoadingMore = false
+    private var noMoreData = false
 
     init {
         resetToIdleState()
@@ -71,12 +88,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startSubscriptionScan(account: GoogleSignInAccount) {
+        // Taramayı sıfırla
+        lastEndDate = null
+        isLoadingMore = false
+        noMoreData = false
+        _loadMoreState.tryEmit(LoadMoreState.Idle)
+        
         viewModelScope.launch {
             _scanState.tryEmit(ScanState.InProgress)
             try {
-                val subscriptions = repository.getSubscriptions(account)
-                _scanState.tryEmit(ScanState.Success(subscriptions))
+                // İlk periyodu yükle
+                val (startDate, endDate) = getNextDateRange()
+                val subscriptions = repository.getSubscriptions(account, startDate, endDate)
+                // Sıralamayı burada yap
+                val sortedSubscriptions = subscriptions.sortedByDescending { it.emailCount }
+                _scanState.tryEmit(ScanState.Success(sortedSubscriptions))
+                lastEndDate = endDate
+                Log.d("MainViewModel", "İlk tarama tamamlandı: ${subscriptions.size} abonelik bulundu")
             } catch (e: Exception) {
+                Log.e("MainViewModel", "Abonelik tarama hatası", e)
                 _scanState.tryEmit(ScanState.Error("Abonelikler taranırken bir hata oluştu."))
             }
         }
@@ -85,6 +115,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resetToIdleState() {
         _signInState.tryEmit(SignInState.Idle)
         _scanState.tryEmit(ScanState.Idle)
+        _loadMoreState.tryEmit(LoadMoreState.Idle)
+        lastEndDate = null
+        isLoadingMore = false
+        noMoreData = false
     }
 
     fun unsubscribeAndClean(account: GoogleSignInAccount, subscription: Subscription, cleanEmails: Boolean) {
@@ -156,5 +190,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // Mevcut yapıda, işlem hemen yapıldığı için bu fonksiyonu boş bırakabiliriz
         // veya sadece geçici veriyi temizleyebiliriz.
         lastAction = null
+    }
+
+    // YENİ FONKSİYON: Daha fazla abonelik yükle - Akıllı birleştirme mantığı ile
+    fun loadMoreSubscriptions(account: GoogleSignInAccount) {
+        if (isLoadingMore || noMoreData) return
+
+        viewModelScope.launch {
+            isLoadingMore = true
+            _loadMoreState.tryEmit(LoadMoreState.InProgress)
+            
+            try {
+                val (startDate, endDate) = getNextDateRange()
+                val newSubscriptions = repository.getSubscriptions(account, startDate, endDate)
+                
+                if (newSubscriptions.isNotEmpty()) {
+                    val currentState = scanState.replayCache.firstOrNull()
+                    if (currentState is ScanState.Success) {
+                        
+                        // Akıllı Birleştirme Mantığı
+                        val currentMap = currentState.subscriptions.associateBy { it.senderEmail }.toMutableMap()
+                        
+                        newSubscriptions.forEach { newItem ->
+                            val existingItem = currentMap[newItem.senderEmail]
+                            if (existingItem != null) {
+                                // Eğer öğe zaten varsa, messageId'leri birleştir ve sayacı güncelle
+                                val combinedMessageIds = (existingItem.messageIds + newItem.messageIds).distinct()
+                                currentMap[newItem.senderEmail] = existingItem.copy(
+                                    messageIds = combinedMessageIds.toMutableList(),
+                                    emailCount = combinedMessageIds.size
+                                )
+                            } else {
+                                // Öğe yeni ise, doğrudan ekle
+                                currentMap[newItem.senderEmail] = newItem
+                            }
+                        }
+                        
+                        // Haritayı tekrar listeye çevir ve sırala
+                        val combinedList = currentMap.values.toList().sortedByDescending { it.emailCount }
+                        _scanState.tryEmit(ScanState.Success(combinedList))
+                    }
+                    lastEndDate = endDate
+                    _loadMoreState.tryEmit(LoadMoreState.Success)
+                    Log.d("MainViewModel", "Daha fazla yükleme tamamlandı: ${newSubscriptions.size} yeni abonelik bulundu.")
+                } else {
+                    noMoreData = true
+                    _loadMoreState.tryEmit(LoadMoreState.NoMoreData)
+                    Log.d("MainViewModel", "Daha fazla abonelik bulunamadı, tarama tamamlandı.")
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Daha fazla yükleme hatası", e)
+                _loadMoreState.tryEmit(LoadMoreState.Error("Daha fazla abonelik yüklenirken hata oluştu."))
+            } finally {
+                isLoadingMore = false
+            }
+        }
+    }
+    
+    // Tarih aralığı hesaplayan yardımcı fonksiyon
+    private fun getNextDateRange(): Pair<Calendar, Calendar> {
+        val endDate = (lastEndDate?.clone() as? Calendar) ?: Calendar.getInstance()
+        val startDate = endDate.clone() as Calendar
+        startDate.add(Calendar.DAY_OF_YEAR, -30)
+        return Pair(startDate, endDate)
     }
 }
