@@ -293,8 +293,7 @@ class EmailRepository(private val context: Context) {
         val httpRegex = "<(https?://[^>]+)>".toRegex()
         val mailtoRegex = "<mailto:([^>]+)>".toRegex()
 
-        httpRegex.find(header)?.let { return UnsubscribeAction.Http(it.groupValues[1]) }
-
+        // 1. ÖNCELİK: Otomatik ve sessiz olan mailto'yu ara.
         mailtoRegex.find(header)?.let {
             val mailtoPart = it.groupValues[1]
             val parts = mailtoPart.split('?')
@@ -305,6 +304,12 @@ class EmailRepository(private val context: Context) {
             return UnsubscribeAction.MailTo(recipient, subject)
         }
 
+        // 2. ÖNCELİK (Yedek Plan): mailto bulunamazsa, kullanıcıya yönlendireceğimiz http linkini ara.
+        httpRegex.find(header)?.let {
+            return UnsubscribeAction.Http(it.groupValues[1])
+        }
+
+        // Hiçbiri bulunamazsa.
         return UnsubscribeAction.NotFound
     }
 

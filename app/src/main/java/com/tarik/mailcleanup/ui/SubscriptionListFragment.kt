@@ -49,7 +49,6 @@ class SubscriptionListFragment : Fragment() {
 
     private fun setupRecyclerView() {
         subscriptionAdapter = SubscriptionAdapter(
-            subscriptions = emptyList(),
             onUnsubscribeClicked = { subscription ->
                 // Artık doğrudan ViewModel'i çağırmıyoruz, önce diyalog gösteriyoruz.
                 showUnsubscribeConfirmationDialog(subscription)
@@ -103,7 +102,8 @@ class SubscriptionListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.scanState.collectLatest { state ->
                 if (state is ScanState.Success) {
-                    subscriptionAdapter.updateData(state.subscriptions)
+                    // YENİ GÜNCELLEME YÖNTEMİ: submitList()
+                    subscriptionAdapter.submitList(state.subscriptions)
                 }
             }
         }
@@ -116,10 +116,11 @@ class SubscriptionListFragment : Fragment() {
                         subscriptionAdapter.setProcessingState(state.email)
                     }
                     is UnsubscribeState.Success -> {
+                        subscriptionAdapter.setProcessingState(null) // İşlem bitince yükleniyor durumunu kaldır
                         // İşlem başarılı olduğunda, o öğeyi listeden çıkaralım
-                        val currentList = subscriptionAdapter.getSubscriptions()
+                        val currentList = subscriptionAdapter.currentList.toMutableList()
                         val newList = currentList.filterNot { it.senderEmail == state.email }
-                        subscriptionAdapter.updateData(newList)
+                        subscriptionAdapter.submitList(newList)
                         
                         val message = when (state.action) {
                             is UnsubscribeAction.MailTo -> "${state.email} için çıkış e-postası gönderildi."
@@ -133,8 +134,7 @@ class SubscriptionListFragment : Fragment() {
                         }
                     }
                     is UnsubscribeState.Error -> {
-                        // Hata durumunda da listeyi eski haline getir
-                        subscriptionAdapter.updateData(subscriptionAdapter.getSubscriptions())
+                        subscriptionAdapter.setProcessingState(null) // Hata durumunda da yükleniyor durumunu kaldır
                         showSnackbar("${state.email} için hata: ${state.message}", isError = true)
                     }
                     is UnsubscribeState.Idle -> { }
@@ -150,16 +150,17 @@ class SubscriptionListFragment : Fragment() {
                         subscriptionAdapter.setProcessingState(state.email)
                     }
                     is KeepState.Success -> {
+                        subscriptionAdapter.setProcessingState(null) // İşlem bitince yükleniyor durumunu kaldır
                         // İşlem başarılı olduğunda, o öğeyi listeden çıkaralım
-                        val currentList = subscriptionAdapter.getSubscriptions()
+                        val currentList = subscriptionAdapter.currentList.toMutableList()
                         val newList = currentList.filterNot { it.senderEmail == state.email }
-                        subscriptionAdapter.updateData(newList)
+                        subscriptionAdapter.submitList(newList)
                         
-                        showSnackbar("${state.email} beyaz listeye eklendi.")
+                        // "Geri Al" seçeneği olan bir Snackbar göster
+                        showUndoSnackbar("'${state.email}' korunanlara eklendi.")
                     }
                     is KeepState.Error -> {
-                        // Hata durumunda da listeyi eski haline getir
-                        subscriptionAdapter.updateData(subscriptionAdapter.getSubscriptions())
+                        subscriptionAdapter.setProcessingState(null) // Hata durumunda da yükleniyor durumunu kaldır
                         showSnackbar("${state.email} için hata: ${state.message}", isError = true)
                     }
                     is KeepState.Idle -> { }
@@ -177,6 +178,27 @@ class SubscriptionListFragment : Fragment() {
                 snackbar.setBackgroundTint(resources.getColor(com.google.android.material.R.color.design_default_color_error, null))
             }
             snackbar.show()
+        }
+    }
+
+    // YENİ FONKSİYON: Geri Alma Seçenekli Snackbar
+    private fun showUndoSnackbar(message: String) {
+        view?.let {
+            Snackbar.make(it, message, Snackbar.LENGTH_LONG)
+                .setAction("Geri Al") {
+                    // Kullanıcı "Geri Al" butonuna bastı
+                    viewModel.undoKeepAction()
+                }
+                .addCallback(object : Snackbar.Callback() {
+                    override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+                        // Eğer Snackbar "Geri Al"a basılmadan kaybolursa (timeout, swipe),
+                        // işlemi kalıcı hale getir.
+                        if (event != DISMISS_EVENT_ACTION) {
+                            viewModel.finalizeKeepAction()
+                        }
+                    }
+                })
+                .show()
         }
     }
 

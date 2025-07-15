@@ -1,20 +1,19 @@
 package com.tarik.mailcleanup.ui
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.tarik.mailcleanup.data.Subscription
 import com.tarik.mailcleanup.databinding.ItemSubscriptionBinding
 
 class SubscriptionAdapter(
-    private var subscriptions: List<Subscription>,
     private val onUnsubscribeClicked: (Subscription) -> Unit,
-    private val onKeepClicked: (Subscription) -> Unit // YENİ: Keep butonu için callback
-) : RecyclerView.Adapter<SubscriptionAdapter.SubscriptionViewHolder>() {
+    private val onKeepClicked: (Subscription) -> Unit
+) : ListAdapter<Subscription, SubscriptionAdapter.SubscriptionViewHolder>(SubscriptionDiffCallback()) {
 
-    // Yükleniyor durumundaki e-postanın adresini tutacak değişken
     private var processingEmail: String? = null
 
     inner class SubscriptionViewHolder(val binding: ItemSubscriptionBinding) :
@@ -29,37 +28,24 @@ class SubscriptionAdapter(
         return SubscriptionViewHolder(binding)
     }
 
-    override fun getItemCount(): Int = subscriptions.size
-
     override fun onBindViewHolder(holder: SubscriptionViewHolder, position: Int) {
-        val subscription = subscriptions[position]
+        val subscription = getItem(position) // getItem() metodunu kullanıyoruz
         holder.binding.senderNameTextView.text = subscription.senderName
         holder.binding.senderEmailTextView.text = subscription.senderEmail
-        
-        // E-posta sayısını Chip'e yazdır
         holder.binding.emailCountChip.text = subscription.emailCount.toString()
-        
-        // --- YENİ: İKONU AYARLA ---
-        // Gönderen adının ilk harfini al, boş değilse.
         val initial = subscription.senderName.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
         holder.binding.senderIconTextView.text = initial
-        // ------------------------
 
-        // --- YENİ MANTIK: Yüklenme Durumunu Kontrol Et ---
         if (subscription.senderEmail == processingEmail) {
-            // Bu öğe şu an işleniyor
-            holder.binding.unsubscribeButton.visibility = View.INVISIBLE // Butonu tamamen yok etmek yerine görünmez yap
-            holder.binding.keepButton.visibility = View.INVISIBLE // Keep butonunu da gizle
+            // YENİ MANTIK: Tüm aksiyon alanını gizle
+            holder.binding.actionLayout.visibility = View.INVISIBLE
             holder.binding.itemProgressBar.visibility = View.VISIBLE
         } else {
             // Normal durum
-            holder.binding.unsubscribeButton.visibility = View.VISIBLE
-            holder.binding.keepButton.visibility = View.VISIBLE
+            holder.binding.actionLayout.visibility = View.VISIBLE
             holder.binding.itemProgressBar.visibility = View.GONE
         }
-        // ---------------------------------------------
 
-        // Tıklama dinleyicilerini ayarla
         holder.binding.unsubscribeButton.setOnClickListener {
             onUnsubscribeClicked(subscription)
         }
@@ -68,23 +54,34 @@ class SubscriptionAdapter(
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    fun updateData(newSubscriptions: List<Subscription>) {
-        this.subscriptions = newSubscriptions
-        // İşlem bittiğinde yükleniyor durumunu sıfırla
-        this.processingEmail = null
-        notifyDataSetChanged()
+    fun setProcessingState(email: String?) {
+        val previousProcessingEmail = processingEmail
+        processingEmail = email
+        
+        // Sadece değişen öğeleri güncellemek için daha verimli bir yol
+        previousProcessingEmail?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
+        email?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
+    }
+    
+    private fun findPositionByEmail(email: String): Int? {
+        for (i in 0 until itemCount) {
+            if (getItem(i).senderEmail == email) {
+                return i
+            }
+        }
+        return null
+    }
+}
+
+// DiffUtil, iki liste arasındaki farkı hesaplar.
+class SubscriptionDiffCallback : DiffUtil.ItemCallback<Subscription>() {
+    override fun areItemsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        // Öğelerin kimlikleri aynı mı? (Örn: Benzersiz ID)
+        return oldItem.senderEmail == newItem.senderEmail
     }
 
-    // --- YENİ FONKSİYON: Belirli bir öğeyi yükleniyor olarak işaretle ---
-    fun setProcessingState(email: String) {
-        this.processingEmail = email
-        // Değişikliği yansıtmak için listeyi güncelle
-        notifyDataSetChanged()
-    }
-
-    // --- YENİ FONKSİYON: Mevcut listeyi döndür ---
-    fun getSubscriptions(): List<Subscription> {
-        return this.subscriptions
+    override fun areContentsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        // Öğelerin içeriği (görsel olarak etkileyen her şey) aynı mı?
+        return oldItem == newItem
     }
 }

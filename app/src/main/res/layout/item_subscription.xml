@@ -9,27 +9,57 @@
     android:layout_marginEnd="8dp"
     android:layout_marginTop="4dp"
     android:layout_marginBottom="4dp"
-    app:cardCornerRadius="8dp"
+    app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
 
-    <RelativeLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="16dp">
 
-        <!-- Gönderici İkonu (İlk Harf) -->
+        <!-- Gönderici İkonu -->
         <TextView
             android:id="@+id/senderIconTextView"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"
-            android:layout_marginEnd="16dp"
             android:background="@drawable/circle_background"
             android:gravity="center"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
             android:textColor="@android:color/white"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
             tools:text="T" />
+
+        <!-- Gönderici Adı -->
+        <TextView
+            android:id="@+id/senderNameTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@+id/emailCountChip"
+            app:layout_constraintStart_toEndOf="@+id/senderIconTextView"
+            app:layout_constraintTop_toTopOf="@+id/senderIconTextView"
+            tools:text="Oldukça Uzun Bir Gönderici Adı Denemesi" />
+
+        <!-- Gönderici E-posta Adresi -->
+        <TextView
+            android:id="@+id/senderEmailTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+            android:textColor="?android:attr/textColorSecondary"
+            app:layout_constraintEnd_toEndOf="@+id/senderNameTextView"
+            app:layout_constraintStart_toStartOf="@+id/senderNameTextView"
+            app:layout_constraintTop_toBottomOf="@+id/senderNameTextView"
+            tools:text="uzunbir.email.adresi@kampanya.trendyol.com" />
 
         <!-- E-posta Sayısı Etiketi -->
         <com.google.android.material.chip.Chip
@@ -37,88 +67,75 @@
             style="@style/Widget.MaterialComponents.Chip.Action"
             android:layout_width="wrap_content"
             android:layout_height="32dp"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentEnd="true"
             app:chipIcon="@drawable/ic_email"
-            app:chipIconSize="16dp"
-            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
             tools:text="84" />
 
-        <LinearLayout
-            android:id="@+id/infoLayout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_toStartOf="@id/actionLayout"
-            android:layout_toEndOf="@id/senderIconTextView"
-            android:orientation="vertical">
+        <!-- Butonları ayıran çizgi -->
+        <View
+            android:id="@+id/divider"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:background="?android:attr/dividerHorizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/senderIconTextView" />
 
-            <TextView
-                android:id="@+id/senderNameTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textStyle="bold"
-                tools:text="Trendyol" />
-
-            <TextView
-                android:id="@+id/senderEmailTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                android:textColor="?android:attr/textColorSecondary"
-                tools:text="kampanya@trendyol.com" />
-        </LinearLayout>
-
-        <!-- Butonları içeren yeni bir LinearLayout -->
-        <LinearLayout
+        <!-- Aksiyon Butonları Alanı -->
+        <FrameLayout
             android:id="@+id/actionLayout"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:layout_below="@id/emailCountChip"
             android:layout_marginTop="8dp"
-            android:orientation="horizontal">
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/divider">
 
-            <!-- Keep Butonu -->
-            <ImageButton
-                android:id="@+id/keepButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"
-                android:src="@drawable/ic_keep_outline"
-                app:tint="?attr/colorControlNormal"
-                tools:ignore="ContentDescription" />
-            
-            <!-- Çık Butonu -->
-            <Button
-                android:id="@+id/unsubscribeButton"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Çık" />
-                
-        </LinearLayout>
-        
-        <!-- Yükleme Göstergesi (actionLayout'un yerine geçecek) -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Keep Butonu (Sola yaslı) - Artık metin tabanlı -->
+                <Button
+                    android:id="@+id/keepButton"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Koru"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <!-- Çık Butonu (Sağa yaslı) -->
+                <Button
+                    android:id="@+id/unsubscribeButton"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Çık"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </FrameLayout>
+
+        <!-- Yükleme Göstergesi (Aksiyon alanının yerine geçecek) -->
         <ProgressBar
             android:id="@+id/itemProgressBar"
-            style="?android:attr/progressBarStyleSmall"
+            style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:layout_below="@id/emailCountChip"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="16dp"
-            android:visibility="gone" />
+            android:layout_height="0dp"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/actionLayout"
+            app:layout_constraintEnd_toEndOf="@+id/actionLayout"
+            app:layout_constraintStart_toStartOf="@+id/actionLayout"
+            app:layout_constraintTop_toTopOf="@+id/actionLayout"
+            tools:visibility="visible" />
 
-    </RelativeLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

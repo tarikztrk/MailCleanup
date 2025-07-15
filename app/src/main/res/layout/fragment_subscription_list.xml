@@ -16,7 +16,7 @@
         android:paddingBottom="4dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/item_subscription" />
-    
+
     <!-- Boş durum ekranı için view'lar buraya eklenebilir -->
 
 </FrameLayout>

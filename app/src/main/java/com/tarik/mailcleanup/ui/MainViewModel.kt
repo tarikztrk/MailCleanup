@@ -42,6 +42,9 @@ sealed class KeepState {
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = EmailRepository(application.applicationContext)
+    
+    // Geçici olarak silinen öğeyi tutacak değişken
+    private var lastRemovedSubscription: Subscription? = null
 
     private val _signInState = MutableSharedFlow<SignInState>(replay = 1)
     val signInState = _signInState.asSharedFlow()
@@ -111,13 +114,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun keepSubscription(subscription: Subscription) {
         viewModelScope.launch {
-            _keepState.emit(KeepState.InProgress(subscription.senderEmail))
-            try {
-                repository.keepSubscription(subscription)
-                _keepState.emit(KeepState.Success(subscription.senderEmail))
-            } catch (e: Exception) {
-                _keepState.emit(KeepState.Error(subscription.senderEmail, "Abonelik korunamadı: ${e.message}"))
+            // Öğeyi listeden çıkarmadan önce sakla
+            lastRemovedSubscription = subscription
+            // Önce UI'ı güncelle
+            val currentState = scanState.replayCache.firstOrNull()
+            if (currentState is ScanState.Success) {
+                val newList = currentState.subscriptions.filterNot { it.senderEmail == subscription.senderEmail }
+                _scanState.tryEmit(ScanState.Success(newList))
             }
+            // Sonra sonucu bildir
+            _keepState.emit(KeepState.Success(subscription.senderEmail))
+        }
+    }
+
+    // YENİ FONKSİYON: "Keep" işlemini kalıcı hale getir veya geri al
+    fun finalizeKeepAction() {
+        viewModelScope.launch {
+            lastRemovedSubscription?.let {
+                repository.keepSubscription(it)
+                lastRemovedSubscription = null // Geçici veriyi temizle
+            }
+        }
+    }
+
+    // YENİ FONKSİYON
+    fun undoKeepAction() {
+        // Geri alma durumunda listeyi eski haline getir
+        val currentState = scanState.replayCache.firstOrNull()
+        if (currentState is ScanState.Success && lastRemovedSubscription != null) {
+            // .toMutableList() ile kopyasını alıp üzerinde değişiklik yapıyoruz.
+            val restoredList = currentState.subscriptions.toMutableList()
+            restoredList.add(lastRemovedSubscription!!)
+            _scanState.tryEmit(ScanState.Success(restoredList.sortedByDescending { it.emailCount }))
+            lastRemovedSubscription = null // Geçici veriyi temizle
         }
     }
 }
