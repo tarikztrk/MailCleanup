@@ -141,19 +141,21 @@ class SubscriptionListFragment : Fragment() {
             viewModel.loadMoreState.collectLatest { state ->
                 when (state) {
                     is LoadMoreState.InProgress -> {
-                        // Yükleme göstergesi (opsiyonel)
-                        Log.d("SubscriptionListFragment", "Daha fazla abonelik yükleniyor...")
+                        binding.loadMoreProgressBar.visibility = View.VISIBLE
                     }
-                    is LoadMoreState.Success -> {
-                        Log.d("SubscriptionListFragment", "Daha fazla abonelik başarıyla yüklendi")
+                    is LoadMoreState.Success, is LoadMoreState.NoMoreData, is LoadMoreState.Error -> {
+                        binding.loadMoreProgressBar.visibility = View.GONE
                     }
-                    is LoadMoreState.NoMoreData -> {
-                        Log.d("SubscriptionListFragment", "Daha fazla abonelik bulunamadı")
+                    else -> {
+                        binding.loadMoreProgressBar.visibility = View.GONE
                     }
-                    is LoadMoreState.Error -> {
-                        showSnackbar(state.message, isError = true)
-                    }
-                    else -> {}
+                }
+
+                if (state is LoadMoreState.Error) {
+                    showSnackbar(state.message, isError = true)
+                }
+                if (state is LoadMoreState.NoMoreData) {
+                    showSnackbar("Tüm abonelikler yüklendi.", isError = false)
                 }
             }
         }

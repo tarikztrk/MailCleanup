@@ -192,7 +192,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         lastAction = null
     }
 
-    // YENİ FONKSİYON: Daha fazla abonelik yükle - Akıllı birleştirme mantığı ile
+    // YENİ FONKSİYON: Daha fazla abonelik yükle - Tutarlı sıralama ile
     fun loadMoreSubscriptions(account: GoogleSignInAccount) {
         if (isLoadingMore || noMoreData) return
 
@@ -208,27 +208,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val currentState = scanState.replayCache.firstOrNull()
                     if (currentState is ScanState.Success) {
                         
-                        // Akıllı Birleştirme Mantığı
+                        // Tutarlı sıralama için basit ekleme
                         val currentMap = currentState.subscriptions.associateBy { it.senderEmail }.toMutableMap()
-                        
+                        val newItemsToAdd = mutableListOf<Subscription>()
+
                         newSubscriptions.forEach { newItem ->
-                            val existingItem = currentMap[newItem.senderEmail]
-                            if (existingItem != null) {
-                                // Eğer öğe zaten varsa, messageId'leri birleştir ve sayacı güncelle
-                                val combinedMessageIds = (existingItem.messageIds + newItem.messageIds).distinct()
-                                currentMap[newItem.senderEmail] = existingItem.copy(
-                                    messageIds = combinedMessageIds.toMutableList(),
-                                    emailCount = combinedMessageIds.size
-                                )
+                            if (currentMap.containsKey(newItem.senderEmail)) {
+                                // Var olanı güncelle (eğer gerekirse) - şimdilik atlıyoruz
                             } else {
-                                // Öğe yeni ise, doğrudan ekle
-                                currentMap[newItem.senderEmail] = newItem
+                                // Sadece gerçekten yeni olanları ekle
+                                newItemsToAdd.add(newItem)
                             }
                         }
                         
-                        // Haritayı tekrar listeye çevir ve sırala
-                        val combinedList = currentMap.values.toList().sortedByDescending { it.emailCount }
-                        _scanState.tryEmit(ScanState.Success(combinedList))
+                        // Yeni öğeleri mevcut listenin sonuna ekle (sıralamayı bozmadan)
+                        val finalList = currentState.subscriptions + newItemsToAdd
+                        _scanState.tryEmit(ScanState.Success(finalList))
                     }
                     lastEndDate = endDate
                     _loadMoreState.tryEmit(LoadMoreState.Success)
