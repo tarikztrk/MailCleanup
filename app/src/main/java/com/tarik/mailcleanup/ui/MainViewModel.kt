@@ -63,16 +63,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _loadMoreState = MutableSharedFlow<LoadMoreState>(replay = 1)
     val loadMoreState = _loadMoreState.asSharedFlow()
 
-    // --- YENİ: Geri Alma Mantığı İçin ---
+    // --- YENİ: MERKEZİ LİSTE YÖNETİMİ ---
+    private val allSubscriptions = mutableListOf<Subscription>()
     private var lastAction: (() -> Unit)? = null
-
-    // --- YENİ: Dinamik Tarih Aralığı Yönetimi ---
     private var lastEndDate: Calendar? = null
     private var isLoadingMore = false
     private var noMoreData = false
 
     init {
         resetToIdleState()
+    }
+
+    private fun updateScanState() {
+        // Bu yardımcı fonksiyon, ana listeyi sıralayıp Flow'u günceller.
+        val sortedList = allSubscriptions.sortedByDescending { it.emailCount }
+        _scanState.tryEmit(ScanState.Success(sortedList))
     }
 
     fun onSignInStarted() {
@@ -88,21 +93,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startSubscriptionScan(account: GoogleSignInAccount) {
-        // Taramayı sıfırla
         lastEndDate = null
         isLoadingMore = false
         noMoreData = false
+        allSubscriptions.clear() // Taramayı sıfırlarken listeyi temizle
         _loadMoreState.tryEmit(LoadMoreState.Idle)
         
         viewModelScope.launch {
             _scanState.tryEmit(ScanState.InProgress)
             try {
-                // İlk periyodu yükle
                 val (startDate, endDate) = getNextDateRange()
                 val subscriptions = repository.getSubscriptions(account, startDate, endDate)
-                // Sıralamayı burada yap
-                val sortedSubscriptions = subscriptions.sortedByDescending { it.emailCount }
-                _scanState.tryEmit(ScanState.Success(sortedSubscriptions))
+                allSubscriptions.addAll(subscriptions)
+                updateScanState() // Merkezi fonksiyonu çağır
                 lastEndDate = endDate
                 Log.d("MainViewModel", "İlk tarama tamamlandı: ${subscriptions.size} abonelik bulundu")
             } catch (e: Exception) {
@@ -112,87 +115,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun resetToIdleState() {
-        _signInState.tryEmit(SignInState.Idle)
-        _scanState.tryEmit(ScanState.Idle)
-        _loadMoreState.tryEmit(LoadMoreState.Idle)
-        lastEndDate = null
-        isLoadingMore = false
-        noMoreData = false
-    }
-
-    fun unsubscribeAndClean(account: GoogleSignInAccount, subscription: Subscription, cleanEmails: Boolean) {
-        viewModelScope.launch {
-            _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
-
-            // Önce UI'ı güncelle
-            val originalList = (scanState.replayCache.firstOrNull() as? ScanState.Success)?.subscriptions
-            val newList = originalList?.filterNot { it.senderEmail == subscription.senderEmail }
-            if (newList != null) {
-                _scanState.emit(ScanState.Success(newList))
-            }
-
-            // Geri alma eylemini hazırla
-            lastAction = {
-                // Listeyi eski haline getir
-                if (originalList != null) {
-                    _scanState.tryEmit(ScanState.Success(originalList))
-                }
-            }
-
-            // Arka planda gerçek işlemi yap
-            val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
-            
-            if (action !is UnsubscribeAction.NotFound) {
-                _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, action))
-            } else {
-                _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
-                // Hata durumunda listeyi geri yükle
-                lastAction?.invoke() 
-            }
-        }
-    }
-    
-    fun keepSubscription(subscription: Subscription) {
-        viewModelScope.launch {
-            val originalList = (scanState.replayCache.firstOrNull() as? ScanState.Success)?.subscriptions
-            val newList = originalList?.filterNot { it.senderEmail == subscription.senderEmail }
-            if (newList != null) {
-                _scanState.emit(ScanState.Success(newList))
-            }
-
-            lastAction = {
-                if (originalList != null) {
-                    _scanState.tryEmit(ScanState.Success(originalList))
-                }
-            }
-            
-            try {
-                repository.keepSubscription(subscription)
-                _keepState.emit(KeepState.Success(subscription.senderEmail))
-            } catch (e: Exception) {
-                _keepState.emit(KeepState.Error(subscription.senderEmail, "Hata oluştu"))
-                lastAction?.invoke()
-            }
-        }
-    }
-    
-    // YENİ FONKSİYON
-    fun undoLastAction() {
-        lastAction?.invoke()
-        lastAction = null // Geri alma eylemi bir kez kullanılabilir.
-    }
-
-    // YENİ FONKSİYON
-    fun finalizeLastAction() {
-        // Bu fonksiyon, Snackbar kaybolduğunda çağrılır.
-        // 'lastAction' veritabanı işlemini içerseydi, burada tetiklenirdi.
-        // Mevcut yapıda, işlem hemen yapıldığı için bu fonksiyonu boş bırakabiliriz
-        // veya sadece geçici veriyi temizleyebiliriz.
-        lastAction = null
-    }
-
-    // YENİ FONKSİYON: Daha fazla abonelik yükle - Tutarlı sıralama ile
     fun loadMoreSubscriptions(account: GoogleSignInAccount) {
         if (isLoadingMore || noMoreData) return
 
@@ -205,29 +127,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val newSubscriptions = repository.getSubscriptions(account, startDate, endDate)
                 
                 if (newSubscriptions.isNotEmpty()) {
-                    val currentState = scanState.replayCache.firstOrNull()
-                    if (currentState is ScanState.Success) {
-                        
-                        // Tutarlı sıralama için basit ekleme
-                        val currentMap = currentState.subscriptions.associateBy { it.senderEmail }.toMutableMap()
-                        val newItemsToAdd = mutableListOf<Subscription>()
-
-                        newSubscriptions.forEach { newItem ->
-                            if (currentMap.containsKey(newItem.senderEmail)) {
-                                // Var olanı güncelle (eğer gerekirse) - şimdilik atlıyoruz
-                            } else {
-                                // Sadece gerçekten yeni olanları ekle
-                                newItemsToAdd.add(newItem)
-                            }
-                        }
-                        
-                        // Yeni öğeleri mevcut listenin sonuna ekle (sıralamayı bozmadan)
-                        val finalList = currentState.subscriptions + newItemsToAdd
-                        _scanState.tryEmit(ScanState.Success(finalList))
-                    }
+                    // Sadece gerçekten yeni olanları ekle
+                    val currentEmails = allSubscriptions.map { it.senderEmail }.toSet()
+                    val trulyNewItems = newSubscriptions.filter { !currentEmails.contains(it.senderEmail) }
+                    
+                    allSubscriptions.addAll(trulyNewItems)
+                    updateScanState() // Ana listeyi güncelle ve yayınla
+                    
                     lastEndDate = endDate
                     _loadMoreState.tryEmit(LoadMoreState.Success)
-                    Log.d("MainViewModel", "Daha fazla yükleme tamamlandı: ${newSubscriptions.size} yeni abonelik bulundu.")
+                    Log.d("MainViewModel", "Daha fazla yükleme tamamlandı: ${trulyNewItems.size} yeni abonelik eklendi.")
                 } else {
                     noMoreData = true
                     _loadMoreState.tryEmit(LoadMoreState.NoMoreData)
@@ -241,12 +150,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun unsubscribeAndClean(account: GoogleSignInAccount, subscription: Subscription, cleanEmails: Boolean) {
+        viewModelScope.launch {
+            val originalIndex = allSubscriptions.indexOf(subscription)
+            allSubscriptions.remove(subscription)
+            updateScanState()
+
+            lastAction = { allSubscriptions.add(originalIndex, subscription); updateScanState() }
+
+            _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
+            val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
+            
+            if (action is UnsubscribeAction.NotFound) {
+                _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
+                lastAction?.invoke()
+            } else {
+                _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, action))
+            }
+        }
+    }
     
-    // Tarih aralığı hesaplayan yardımcı fonksiyon
+    fun keepSubscription(subscription: Subscription) {
+        viewModelScope.launch {
+            val originalIndex = allSubscriptions.indexOf(subscription)
+            allSubscriptions.remove(subscription)
+            updateScanState()
+
+            lastAction = { allSubscriptions.add(originalIndex, subscription); updateScanState() }
+            
+            try {
+                repository.keepSubscription(subscription)
+                _keepState.emit(KeepState.Success(subscription.senderEmail))
+            } catch (e: Exception) {
+                _keepState.emit(KeepState.Error(subscription.senderEmail, "Hata oluştu"))
+                lastAction?.invoke()
+            }
+        }
+    }
+
+    fun undoLastAction() {
+        lastAction?.invoke()
+        lastAction = null
+    }
+
+    fun finalizeLastAction() {
+        lastAction = null
+    }
+
     private fun getNextDateRange(): Pair<Calendar, Calendar> {
         val endDate = (lastEndDate?.clone() as? Calendar) ?: Calendar.getInstance()
         val startDate = endDate.clone() as Calendar
         startDate.add(Calendar.DAY_OF_YEAR, -30)
         return Pair(startDate, endDate)
+    }
+    
+    fun resetToIdleState() {
+        _signInState.tryEmit(SignInState.Idle)
+        _scanState.tryEmit(ScanState.Idle)
+        _loadMoreState.tryEmit(LoadMoreState.Idle)
+        allSubscriptions.clear()
+        lastEndDate = null
+        isLoadingMore = false
+        noMoreData = false
     }
 }

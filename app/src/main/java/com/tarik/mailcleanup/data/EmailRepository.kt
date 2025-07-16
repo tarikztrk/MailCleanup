@@ -73,7 +73,8 @@ class EmailRepository(private val context: Context) {
                 val subscriptionsMap = mutableMapOf<String, Subscription>()
                 val processedEmails = processedDao.getAll().associateBy { it.senderEmail }
 
-                messageIds.chunked(10).mapIndexed { chunkIndex, chunk ->
+                val chunks = messageIds.chunked(10)
+                chunks.mapIndexed { chunkIndex, chunk ->
                     async {
                         var retryCount = 0
                         val maxRetries = 3
@@ -112,7 +113,7 @@ class EmailRepository(private val context: Context) {
                                 }
                                 
                                 batch.execute()
-                                Log.d("EmailRepository", "Abonelik tarama chunk'ı (${chunkIndex + 1}/${messageIds.chunked(20).size}) tamamlandı.")
+                                Log.d("EmailRepository", "Abonelik tarama chunk'ı (${chunkIndex + 1}/${chunks.size}) tamamlandı.")
                                 
                                 // Başarılı olursa döngüden çık
                                 break
@@ -248,7 +249,8 @@ class EmailRepository(private val context: Context) {
             Log.d("EmailRepository", "${allMessageIds.size} adet e-posta bulundu, çöp kutusuna taşınıyor.")
 
             // Batch boyutunu küçültüyoruz (100'den 10'a) ve istekler arasında gecikme ekliyoruz
-            allMessageIds.chunked(10).forEachIndexed { index, chunk ->
+            val deleteChunks = allMessageIds.chunked(10)
+            deleteChunks.forEachIndexed { index, chunk ->
                 var retryCount = 0
                 val maxRetries = 3
                 
@@ -269,7 +271,7 @@ class EmailRepository(private val context: Context) {
                         }
                         
                         batch.execute()
-                        Log.d("EmailRepository", "${chunk.size} boyutlu silme chunk'ı (${index + 1}/${allMessageIds.chunked(10).size}) işlendi.")
+                        Log.d("EmailRepository", "${chunk.size} boyutlu silme chunk'ı (${index + 1}/${deleteChunks.size}) işlendi.")
                         
                         // Başarılı olursa döngüden çık
                         break
