@@ -208,7 +208,7 @@ class EmailRepository(private val context: Context) {
         }
     }
 
-    suspend fun keepSubscription(subscription: Subscription) {
+    suspend fun keepSubscription(subscription: Subscription): Boolean {
         return withContext(Dispatchers.IO) {
             try {
                 val record = ProcessedSubscription(
@@ -218,10 +218,26 @@ class EmailRepository(private val context: Context) {
                 )
                 processedDao.insert(record)
                 Log.d("EmailRepository", "${subscription.senderEmail} veritabanına 'WHITELISTED' olarak eklendi.")
+                true
             } catch (e: Exception) {
                 Log.e("EmailRepository", "Abonelik koruma hatası", e)
+                false
             }
         }
+    }
+
+    // --- YENİ FONKSİYONLAR: GERİ AL İŞLEMİ İÇİN ---
+    
+    suspend fun deleteProcessedSubscription(email: String) {
+        withContext(Dispatchers.IO) {
+            processedDao.deleteByEmail(email)
+            Log.d("EmailRepository", "$email veritabanından silindi (Geri Al).")
+        }
+    }
+
+    // `keepSubscription`'ın tersi.
+    suspend fun unkeepSubscription(subscription: Subscription) {
+        deleteProcessedSubscription(subscription.senderEmail)
     }
 
     private suspend fun cleanEmailsFromSender(gmail: Gmail, senderEmail: String) {

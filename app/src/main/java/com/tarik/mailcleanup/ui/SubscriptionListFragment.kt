@@ -99,6 +99,10 @@ class SubscriptionListFragment : Fragment() {
                     subscriptionAdapter.submitList(state.subscriptions)
                     // YENİ: Boş durum kontrolü
                     checkEmptyState(state.subscriptions)
+                } else if (state is ScanState.InProgress) {
+                    // Tarama başlarken boş ekranı gizle
+                    binding.emptyStateLayout.visibility = View.GONE
+                    binding.subscriptionsRecyclerView.visibility = View.VISIBLE
                 }
             }
         }
@@ -182,7 +186,7 @@ class SubscriptionListFragment : Fragment() {
                 .addCallback(object : Snackbar.Callback() {
                     override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                         if (event != DISMISS_EVENT_ACTION) {
-                            viewModel.finalizeLastAction()
+                            viewModel.finalizePendingAction()
                         }
                     }
                 })

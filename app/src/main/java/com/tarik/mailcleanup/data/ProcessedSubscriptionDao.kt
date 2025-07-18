@@ -18,4 +18,8 @@ interface ProcessedSubscriptionDao {
     // Tüm işlenmiş kayıtları getirir (hata ayıklama için kullanışlı).
     @Query("SELECT * FROM processed_subscriptions")
     suspend fun getAll(): List<ProcessedSubscription>
+    
+    // Verilen e-posta adresine sahip kaydı siler (Geri Al işlemi için).
+    @Query("DELETE FROM processed_subscriptions WHERE senderEmail = :email")
+    suspend fun deleteByEmail(email: String)
 }

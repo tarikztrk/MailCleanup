@@ -4,10 +4,12 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.tarik.mailcleanup.data.EmailRepository
 import com.tarik.mailcleanup.data.Subscription
 import com.tarik.mailcleanup.data.UnsubscribeAction
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -63,9 +65,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _loadMoreState = MutableSharedFlow<LoadMoreState>(replay = 1)
     val loadMoreState = _loadMoreState.asSharedFlow()
 
-    // --- YENİ: MERKEZİ LİSTE YÖNETİMİ ---
+    // --- YENİ: GECİKMELİ İŞLEM MANTIĞI ---
+    private var pendingJob: Job? = null // Gerçek işlemi tutacak olan Coroutine Job'ı
+    private var lastRemovedSubscription: Subscription? = null
+    private var lastRemovedSubscriptionIndex: Int = -1
+    private var lastActionType: String? = null // "KEEP" veya "UNSUBSCRIBE"
+    private var pendingCleanEmails: Boolean = false
+
     private val allSubscriptions = mutableListOf<Subscription>()
-    private var lastAction: (() -> Unit)? = null
     private var lastEndDate: Calendar? = null
     private var isLoadingMore = false
     private var noMoreData = false
@@ -151,51 +158,97 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- UNSUBSCRIBE VE KEEP FONKSİYONLARI TAMAMEN YENİLENDİ ---
+
     fun unsubscribeAndClean(account: GoogleSignInAccount, subscription: Subscription, cleanEmails: Boolean) {
-        viewModelScope.launch {
-            val originalIndex = allSubscriptions.indexOf(subscription)
-            allSubscriptions.remove(subscription)
+        // Bekleyen bir eylem varsa, onu hemen tamamla ki çakışmasın.
+        finalizePendingAction()
+
+        // Adım 1: Öğeyi sadece UI'dan (yerel listeden) geçici olarak çıkar.
+        lastRemovedSubscriptionIndex = allSubscriptions.indexOfFirst { it.senderEmail == subscription.senderEmail }
+        if (lastRemovedSubscriptionIndex != -1) {
+            lastRemovedSubscription = allSubscriptions.removeAt(lastRemovedSubscriptionIndex)
+            lastActionType = "UNSUBSCRIBE"
+            pendingCleanEmails = cleanEmails
             updateScanState()
 
-            lastAction = { allSubscriptions.add(originalIndex, subscription); updateScanState() }
-
-            _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
-            val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
+            // Adım 2: Gerçek işlemi yapacak olan Coroutine'i bir Job olarak planla, ama HENÜZ BAŞLATMA.
+            pendingJob = viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                // Bu kod bloğu, sadece biz .start() veya .join() dediğimizde çalışacak.
+                _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
+                val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
+                if (action is UnsubscribeAction.NotFound) {
+                    _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
+                    undoLastAction(informUser = false) // Kullanıcıya tekrar bildirmeden geri al
+                } else {
+                    _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, action))
+                }
+            }
             
-            if (action is UnsubscribeAction.NotFound) {
-                _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
-                lastAction?.invoke()
-            } else {
-                _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, action))
+            // Adım 3: UI'a, geri alma seçeneği sunması için sinyal gönder.
+            viewModelScope.launch { 
+                _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, UnsubscribeAction.NotFound)) // Geçici sinyal
             }
         }
     }
     
     fun keepSubscription(subscription: Subscription) {
-        viewModelScope.launch {
-            val originalIndex = allSubscriptions.indexOf(subscription)
-            allSubscriptions.remove(subscription)
-            updateScanState()
+        finalizePendingAction()
 
-            lastAction = { allSubscriptions.add(originalIndex, subscription); updateScanState() }
+        lastRemovedSubscriptionIndex = allSubscriptions.indexOfFirst { it.senderEmail == subscription.senderEmail }
+        if (lastRemovedSubscriptionIndex != -1) {
+            lastRemovedSubscription = allSubscriptions.removeAt(lastRemovedSubscriptionIndex)
+            lastActionType = "KEEP"
+            updateScanState()
             
-            try {
-                repository.keepSubscription(subscription)
+            pendingJob = viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                val success = repository.keepSubscription(subscription)
+                if (!success) {
+                    _keepState.emit(KeepState.Error(subscription.senderEmail, "Hata oluştu"))
+                    undoLastAction(informUser = false)
+                }
+            }
+
+            // UI'a, geri alma seçeneği sunması için sinyal gönder.
+            viewModelScope.launch { 
                 _keepState.emit(KeepState.Success(subscription.senderEmail))
-            } catch (e: Exception) {
-                _keepState.emit(KeepState.Error(subscription.senderEmail, "Hata oluştu"))
-                lastAction?.invoke()
             }
         }
     }
+    
+    fun undoLastAction(informUser: Boolean = true) {
+        pendingJob?.cancel() // Arka planda çalışacak olan asıl işlemi tamamen iptal et.
+        pendingJob = null
+        
+        lastRemovedSubscription?.let {
+            if (lastRemovedSubscriptionIndex != -1) {
+                allSubscriptions.add(lastRemovedSubscriptionIndex, it)
+                updateScanState()
+            }
+        }
+        
+        lastRemovedSubscription = null
+        lastRemovedSubscriptionIndex = -1
+        lastActionType = null
+        pendingCleanEmails = false
 
-    fun undoLastAction() {
-        lastAction?.invoke()
-        lastAction = null
+        if (informUser) {
+            // Geri alındığını kullanıcıya bildirebiliriz.
+            viewModelScope.launch { _keepState.emit(KeepState.Idle) } // Veya özel bir UndoState
+        }
     }
 
-    fun finalizeLastAction() {
-        lastAction = null
+    fun finalizePendingAction() {
+        // Snackbar süresi dolduğunda bu fonksiyon çağrılır.
+        // Bekleyen bir iş varsa, onu şimdi başlat.
+        pendingJob?.start()
+        
+        // Geçici verileri temizle
+        pendingJob = null
+        lastRemovedSubscription = null
+        lastRemovedSubscriptionIndex = -1
+        lastActionType = null
+        pendingCleanEmails = false
     }
 
     private fun getNextDateRange(): Pair<Calendar, Calendar> {
@@ -213,5 +266,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         lastEndDate = null
         isLoadingMore = false
         noMoreData = false
+        lastRemovedSubscription = null
+        lastRemovedSubscriptionIndex = -1
+        lastActionType = null
+        pendingCleanEmails = false
+        pendingJob?.cancel()
+        pendingJob = null
     }
 }
