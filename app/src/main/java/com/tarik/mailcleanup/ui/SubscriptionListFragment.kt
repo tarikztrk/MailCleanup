@@ -5,9 +5,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.view.ActionMode
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -19,6 +23,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.data.Subscription
 import com.tarik.mailcleanup.data.UnsubscribeAction
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
@@ -33,6 +38,7 @@ class SubscriptionListFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var subscriptionAdapter: SubscriptionAdapter
     private var currentAccount: GoogleSignInAccount? = null
+    private var actionMode: ActionMode? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSubscriptionListBinding.inflate(inflater, container, false)
@@ -46,8 +52,53 @@ class SubscriptionListFragment : Fragment() {
         observeViewModel()
     }
 
+    private val actionModeCallback = object : ActionMode.Callback {
+        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+            mode.menuInflater.inflate(R.menu.menu_selection, menu)
+            return true
+        }
+        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
+        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+            when (item.itemId) {
+                R.id.action_unsubscribe -> {
+                    showBulkUnsubscribeConfirmationDialog()
+                    return true
+                }
+                R.id.action_keep -> {
+                    viewModel.bulkKeep()
+                    mode.finish()
+                    return true
+                }
+                R.id.action_select_all -> {
+                    viewModel.selectAll()
+                    return true
+                }
+                else -> return false
+            }
+        }
+        override fun onDestroyActionMode(mode: ActionMode) {
+            actionMode = null
+            viewModel.clearSelection()
+        }
+    }
+
     private fun setupRecyclerView() {
         subscriptionAdapter = SubscriptionAdapter(
+            clickListener = { subscription ->
+                if (viewModel.isSelectionMode.value == true) {
+                    viewModel.toggleSelection(subscription)
+                }
+            },
+            longClickListener = { subscription ->
+                if (viewModel.isSelectionMode.value != true) {
+                    viewModel.startSelectionMode(subscription)
+                }
+                true
+            },
+            isSelectionMode = { viewModel.isSelectionMode.value == true },
+            isSelected = { subscription ->
+                viewModel.selectedItems.value?.contains(subscription) == true
+            },
             onUnsubscribeClicked = { subscription ->
                 showUnsubscribeConfirmationDialog(subscription)
             },
@@ -87,6 +138,23 @@ class SubscriptionListFragment : Fragment() {
             }
             .setPositiveButton("Evet, Çık ve Temizle") { _, _ ->
                 currentAccount?.let { viewModel.unsubscribeAndClean(it, subscription, cleanEmails = true) }
+            }
+            .setNeutralButton("İptal", null)
+            .show()
+    }
+
+    private fun showBulkUnsubscribeConfirmationDialog() {
+        val selectedCount = viewModel.getSelectedItemsCount()
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Toplu Abonelikten Çıkış")
+            .setMessage("$selectedCount abonelikten çıkılacak. Ayrıca bu gönderücilerden gelen mevcut tüm e-postalar da çöp kutusuna taşınsın mı?")
+            .setNegativeButton("Sadece Çık") { _, _ ->
+                currentAccount?.let { viewModel.bulkUnsubscribe(it, cleanEmails = false) }
+                actionMode?.finish()
+            }
+            .setPositiveButton("Evet, Çık ve Temizle") { _, _ ->
+                currentAccount?.let { viewModel.bulkUnsubscribe(it, cleanEmails = true) }
+                actionMode?.finish()
             }
             .setNeutralButton("İptal", null)
             .show()
@@ -162,6 +230,20 @@ class SubscriptionListFragment : Fragment() {
                     showSnackbar("Tüm abonelikler yüklendi.", isError = false)
                 }
             }
+        }
+        
+        // YENİ: SEÇİM DURUMU GÖZLEMLERİ
+        viewModel.isSelectionMode.observe(viewLifecycleOwner) { inSelectionMode ->
+            if (inSelectionMode && actionMode == null) {
+                actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
+            } else if (!inSelectionMode && actionMode != null) {
+                actionMode?.finish()
+            }
+        }
+
+        viewModel.selectedItems.observe(viewLifecycleOwner) { selection ->
+            actionMode?.title = "${selection.size} öğe seçildi"
+            subscriptionAdapter.notifyDataSetChanged() // Seçim değiştiğinde listeyi yenile
         }
     }
 

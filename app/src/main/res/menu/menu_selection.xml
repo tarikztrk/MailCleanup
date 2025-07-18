@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_unsubscribe"
+        android:title="Toplu Çıkış"
+        android:icon="@drawable/ic_email"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_keep"
+        android:title="Toplu Koru"
+        android:icon="@drawable/ic_keep_outline"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_select_all"
+        android:title="Tümünü Seç"
+        app:showAsAction="never" />
+</menu> 

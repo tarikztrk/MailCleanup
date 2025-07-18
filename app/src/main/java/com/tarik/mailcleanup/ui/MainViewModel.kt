@@ -3,6 +3,8 @@ package com.tarik.mailcleanup.ui
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -64,6 +66,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val keepState = _keepState.asSharedFlow()
     private val _loadMoreState = MutableSharedFlow<LoadMoreState>(replay = 1)
     val loadMoreState = _loadMoreState.asSharedFlow()
+
+    // --- YENİ: ÇOKLU SEÇİM YÖNETİMİ ---
+    private val _selectedItems = MutableLiveData<Set<Subscription>>(emptySet())
+    val selectedItems: LiveData<Set<Subscription>> = _selectedItems
+
+    private val _isSelectionMode = MutableLiveData<Boolean>(false)
+    val isSelectionMode: LiveData<Boolean> = _isSelectionMode
 
     // --- YENİ: GECİKMELİ İŞLEM MANTIĞI ---
     private var pendingJob: Job? = null // Gerçek işlemi tutacak olan Coroutine Job'ı
@@ -258,6 +267,64 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return Pair(startDate, endDate)
     }
     
+    // --- ÇOKLU SEÇİM FONKSİYONLARI ---
+    fun toggleSelection(subscription: Subscription) {
+        val currentSelection = _selectedItems.value ?: emptySet()
+        val newSelection = currentSelection.toMutableSet()
+        
+        if (newSelection.contains(subscription)) {
+            newSelection.remove(subscription)
+        } else {
+            newSelection.add(subscription)
+        }
+
+        _selectedItems.value = newSelection
+        _isSelectionMode.value = newSelection.isNotEmpty()
+    }
+
+    fun startSelectionMode(subscription: Subscription) {
+        _isSelectionMode.value = true
+        toggleSelection(subscription)
+    }
+
+    fun clearSelection() {
+        _selectedItems.value = emptySet()
+        _isSelectionMode.value = false
+    }
+
+    fun selectAll() {
+        val currentState = scanState.replayCache.firstOrNull()
+        if (currentState is ScanState.Success) {
+            _selectedItems.value = currentState.subscriptions.toSet()
+        }
+    }
+
+    fun getSelectedItemsCount(): Int {
+        return _selectedItems.value?.size ?: 0
+    }
+
+    fun bulkUnsubscribe(account: GoogleSignInAccount, cleanEmails: Boolean) {
+        val selectedSubs = _selectedItems.value?.toList() ?: return
+        clearSelection() // Seçimi temizle
+        
+        viewModelScope.launch {
+            for (subscription in selectedSubs) {
+                unsubscribeAndClean(account, subscription, cleanEmails)
+            }
+        }
+    }
+
+    fun bulkKeep() {
+        val selectedSubs = _selectedItems.value?.toList() ?: return
+        clearSelection() // Seçimi temizle
+        
+        viewModelScope.launch {
+            for (subscription in selectedSubs) {
+                keepSubscription(subscription)
+            }
+        }
+    }
+
     fun resetToIdleState() {
         _signInState.tryEmit(SignInState.Idle)
         _scanState.tryEmit(ScanState.Idle)
@@ -272,5 +339,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         pendingCleanEmails = false
         pendingJob?.cancel()
         pendingJob = null
+        // Seçim durumunu da sıfırla
+        clearSelection()
     }
 }
