@@ -59,14 +59,30 @@ class SubscriptionListFragment : Fragment() {
         }
         override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
         override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+            val selectedCount = viewModel.getSelectedItemsCount()
+            if (selectedCount == 0) return false
+
             when (item.itemId) {
                 R.id.action_unsubscribe -> {
-                    showBulkUnsubscribeConfirmationDialog()
+                    // Toplu çıkış için de bir onay diyaloğu gösterelim
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("$selectedCount Abonelikten Çıkılsın mı?")
+                        .setMessage("Seçili $selectedCount göndericiden abonelikten çıkılacak. Ayrıca bu göndericilerden gelen tüm e-postalar temizlensin mi?")
+                        .setNegativeButton("Sadece Çık") { _, _ ->
+                            viewModel.bulkUnsubscribeSelected(currentAccount, cleanEmails = false)
+                        }
+                        .setPositiveButton("Çık ve Temizle") { _, _ ->
+                            viewModel.bulkUnsubscribeSelected(currentAccount, cleanEmails = true)
+                        }
+                        .setNeutralButton("İptal", null)
+                        .show()
+                    
+                    // mode.finish() BURADAN KALDIRILDI!
                     return true
                 }
                 R.id.action_keep -> {
-                    viewModel.bulkKeep()
-                    mode.finish()
+                    viewModel.bulkKeepSelected(currentAccount)
+                    // mode.finish() BURADAN KALDIRILDI!
                     return true
                 }
                 R.id.action_select_all -> {
@@ -78,7 +94,8 @@ class SubscriptionListFragment : Fragment() {
         }
         override fun onDestroyActionMode(mode: ActionMode) {
             actionMode = null
-            viewModel.clearSelection()
+            // ViewModel'in seçim modunu zaten kapattığını varsayıyoruz.
+            // Ekstra bir clearSelection() çağırmaya gerek yok.
         }
     }
 
@@ -143,22 +160,7 @@ class SubscriptionListFragment : Fragment() {
             .show()
     }
 
-    private fun showBulkUnsubscribeConfirmationDialog() {
-        val selectedCount = viewModel.getSelectedItemsCount()
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Toplu Abonelikten Çıkış")
-            .setMessage("$selectedCount abonelikten çıkılacak. Ayrıca bu gönderücilerden gelen mevcut tüm e-postalar da çöp kutusuna taşınsın mı?")
-            .setNegativeButton("Sadece Çık") { _, _ ->
-                currentAccount?.let { viewModel.bulkUnsubscribe(it, cleanEmails = false) }
-                actionMode?.finish()
-            }
-            .setPositiveButton("Evet, Çık ve Temizle") { _, _ ->
-                currentAccount?.let { viewModel.bulkUnsubscribe(it, cleanEmails = true) }
-                actionMode?.finish()
-            }
-            .setNeutralButton("İptal", null)
-            .show()
-    }
+
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -237,6 +239,7 @@ class SubscriptionListFragment : Fragment() {
             if (inSelectionMode && actionMode == null) {
                 actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
             } else if (!inSelectionMode && actionMode != null) {
+                // ViewModel seçim modunun bittiğini söylediğinde, modu kapat.
                 actionMode?.finish()
             }
         }
@@ -244,6 +247,13 @@ class SubscriptionListFragment : Fragment() {
         viewModel.selectedItems.observe(viewLifecycleOwner) { selection ->
             actionMode?.title = "${selection.size} öğe seçildi"
             subscriptionAdapter.notifyDataSetChanged() // Seçim değiştiğinde listeyi yenile
+        }
+
+        // YENİ: Toplu işlem sonucunu dinle
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.bulkActionResult.collectLatest { message ->
+                showSnackbar(message)
+            }
         }
     }
 

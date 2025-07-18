@@ -74,6 +74,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isSelectionMode = MutableLiveData<Boolean>(false)
     val isSelectionMode: LiveData<Boolean> = _isSelectionMode
 
+    // --- YENİ: Toplu işlem sonuçlarını bildirmek için ---
+    private val _bulkActionResult = MutableSharedFlow<String>()
+    val bulkActionResult = _bulkActionResult.asSharedFlow()
+
     // --- YENİ: GECİKMELİ İŞLEM MANTIĞI ---
     private var pendingJob: Job? = null // Gerçek işlemi tutacak olan Coroutine Job'ı
     private var lastRemovedSubscription: Subscription? = null
@@ -303,25 +307,62 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return _selectedItems.value?.size ?: 0
     }
 
-    fun bulkUnsubscribe(account: GoogleSignInAccount, cleanEmails: Boolean) {
-        val selectedSubs = _selectedItems.value?.toList() ?: return
-        clearSelection() // Seçimi temizle
-        
+    // --- YENİ: TOPLU İŞLEM FONKSİYONLARI ---
+
+    fun bulkKeepSelected(account: GoogleSignInAccount?) {
+        if (account == null) return
+        // SEÇİLİ ÖĞELERİ İŞLEM BAŞINDA BİR DEĞİŞKENE ALIYORUZ.
+        val itemsToKeep = _selectedItems.value ?: return
+        if (itemsToKeep.isEmpty()) return
+
         viewModelScope.launch {
-            for (subscription in selectedSubs) {
-                unsubscribeAndClean(account, subscription, cleanEmails)
+            var successCount = 0
+            
+            // Önce UI'ı güncelle
+            allSubscriptions.removeAll(itemsToKeep)
+            updateScanState()
+
+            // Arka planda veritabanı işlemlerini yap
+            itemsToKeep.forEach { subscription ->
+                if (repository.keepSubscription(subscription)) {
+                    successCount++
+                }
             }
+
+            // İşlem sonucunu bildir
+            _bulkActionResult.emit("$successCount abonelik korundu.")
+            
+            // İŞLEM BİTTİKTEN SONRA SEÇİMİ TEMİZLE
+            clearSelection()
         }
     }
 
-    fun bulkKeep() {
-        val selectedSubs = _selectedItems.value?.toList() ?: return
-        clearSelection() // Seçimi temizle
-        
+    fun bulkUnsubscribeSelected(account: GoogleSignInAccount?, cleanEmails: Boolean) {
+        if (account == null) return
+        // SEÇİLİ ÖĞELERİ İŞLEM BAŞINDA BİR DEĞİŞKENE ALIYORUZ.
+        val itemsToUnsubscribe = _selectedItems.value ?: return
+        if (itemsToUnsubscribe.isEmpty()) return
+
         viewModelScope.launch {
-            for (subscription in selectedSubs) {
-                keepSubscription(subscription)
+            var successCount = 0
+            
+            // Önce UI'ı güncelle
+            allSubscriptions.removeAll(itemsToUnsubscribe)
+            updateScanState()
+            
+            itemsToUnsubscribe.forEach { subscription ->
+                val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
+                if (action !is UnsubscribeAction.NotFound) {
+                    successCount++
+                }
+                // Not: Toplu çıkışta her bir öğe için ayrı HTTP linki açmak pratik değil.
+                // Bu yüzden sadece mailto ile olanlar sessizce işlenir.
             }
+
+            _bulkActionResult.emit("$successCount abonelikten çıkıldı.")
+            
+            // İŞLEM BİTTİKTEN SONRA SEÇİMİ TEMİZLE
+            clearSelection()
         }
     }
 
