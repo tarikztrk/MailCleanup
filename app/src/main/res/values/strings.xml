@@ -1,5 +1,70 @@
 <resources>
-    <string name="app_name">MailCleanup</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="app_name">Mail Cleanup</string>
+    
+    <!-- MainActivity -->
+    <string name="status_initial">Giriş yapmak için butona tıklayın.</string>
+    <string name="status_signing_in">Giriş yapılıyor…</string>
+    <string name="status_scanning">Abonelikleriniz taranıyor…</string>
+    <string name="error_sign_in_failed">Giriş başarısız oldu. Kod: %1$s</string>
+    <string name="error_sign_in_cancelled">Giriş işlemi iptal edildi.</string>
+    <string name="error_scan_failed">Abonelikler taranırken bir hata oluştu.</string>
+
+    <!-- SubscriptionListFragment -->
+    <string name="unsubscribe_dialog_title">Abonelikten Çık ve Temizle?</string>
+    <string name="unsubscribe_dialog_message">\'%1$s\' aboneliğinden çıkılacak. Ayrıca bu göndericiden gelen mevcut tüm e-postalar çöp kutusuna taşınsın mı?</string>
+    <string name="dialog_option_unsubscribe_only">Sadece Çık</string>
+    <string name="dialog_option_unsubscribe_and_clean">Çık ve Temizle</string>
+    <string name="dialog_option_cancel">İptal</string>
+    <string name="snackbar_unsubscribed_mailto">\'%1$s\' için çıkış e-postası gönderildi.</string>
+    <string name="snackbar_unsubscribed_success">İşlem başarılı.</string>
+    <string name="snackbar_kept">\'%1$s\' korunanlara eklendi.</string>
+    <string name="snackbar_undo">Geri Al</string>
+    <string name="snackbar_all_loaded">Tüm abonelikler yüklendi.</string>
+    <string name="empty_state_message">Tebrikler, tüm abonelikler temizlendi!</string>
+    
+    <!-- Buttons -->
+    <string name="button_unsubscribe">Çık</string>
+    <string name="button_keep">Koru</string>
+    <string name="button_sign_in">Google ile Giriş Yap</string>
+    
+    <!-- Menu items -->
+    <string name="menu_bulk_unsubscribe">Toplu Çıkış</string>
+    <string name="menu_bulk_keep">Toplu Koru</string>
+    <string name="menu_select_all">Tümünü Seç</string>
+    <string name="menu_search">Ara</string>
+    <string name="selection_title">%1$d öğe seçildi</string>
+    
+    <!-- Search -->
+    <string name="search_hint">Abonelik ara…</string>
+    <string name="clear_search">Aramayı temizle</string>
+    
+    <!-- Bulk actions -->
+    <string name="bulk_action_result_kept">%1$d abonelik korundu.</string>
+    <string name="bulk_action_result_unsubscribed">%1$d abonelikten çıkıldı.</string>
+    
+    <!-- General errors -->
+    <string name="error_generic">Bir hata oluştu.</string>
+    <string name="error_no_unsubscribe_method">Otomatik çıkış yöntemi bulunamadı.</string>
+    <string name="error_keep_failed">Hata oluştu</string>
+    <string name="error_network">Ağ bağlantısı hatası.</string>
+    
+    <!-- Loading states -->
+    <string name="loading_more">Daha fazla yükleniyor…</string>
+    <string name="loading_completed">Yükleme tamamlandı</string>
+    
+    <!-- Repository -->
+    <string name="default_user_name">Kullanıcı</string>
+    <string name="unknown_sender">Bilinmeyen Gönderici</string>
+    <string name="unsubscribe_subject">Unsubscribe</string>
+    
+    <!-- Database status -->
+    <string name="status_unsubscribed">UNSUBSCRIBED</string>
+    <string name="status_whitelisted">WHITELISTED</string>
+    
+    <!-- Action types -->
+    <string name="action_keep">KEEP</string>
+    <string name="action_unsubscribe">UNSUBSCRIBE</string>
+    
+    <!-- Fragment tags -->
+    <string name="fragment_tag_subscription_list">SubscriptionListFragment</string>
 </resources>

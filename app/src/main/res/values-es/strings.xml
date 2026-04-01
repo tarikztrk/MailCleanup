@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mail Cleanup</string>
+    
+    <!-- MainActivity -->
+    <string name="status_initial">Toca el botón para iniciar sesión.</string>
+    <string name="status_signing_in">Iniciando sesión…</string>
+    <string name="status_scanning">Escaneando tus suscripciones…</string>
+    <string name="error_sign_in_failed">El inicio de sesión falló. Código: %1$s</string>
+    <string name="error_sign_in_cancelled">El inicio de sesión fue cancelado.</string>
+    <string name="error_scan_failed">Ocurrió un error al escanear las suscripciones.</string>
+
+    <!-- SubscriptionListFragment -->
+    <string name="unsubscribe_dialog_title">¿Cancelar Suscripción y Limpiar?</string>
+    <string name="unsubscribe_dialog_message">Se cancelará la suscripción de \'%1$s\'. ¿También mover todos los correos existentes de este remitente a la papelera?</string>
+    <string name="dialog_option_unsubscribe_only">Solo Cancelar Suscripción</string>
+    <string name="dialog_option_unsubscribe_and_clean">Cancelar y Limpiar</string>
+    <string name="dialog_option_cancel">Cancelar</string>
+    <string name="snackbar_unsubscribed_mailto">Correo de cancelación de suscripción enviado para \'%1$s\'.</string>
+    <string name="snackbar_unsubscribed_success">Acción exitosa.</string>
+    <string name="snackbar_kept">\'%1$s\' fue añadido a tu lista de conservados.</string>
+    <string name="snackbar_undo">Deshacer</string>
+    <string name="snackbar_all_loaded">Todas las suscripciones han sido cargadas.</string>
+    <string name="empty_state_message">¡Felicidades, todas las suscripciones han sido limpiadas!</string>
+    
+    <!-- Buttons -->
+    <string name="button_unsubscribe">Darse de Baja</string>
+    <string name="button_keep">Conservar</string>
+    <string name="button_sign_in">Iniciar sesión con Google</string>
+    
+    <!-- Menu items -->
+    <string name="menu_bulk_unsubscribe">Baja Masiva</string>
+    <string name="menu_bulk_keep">Conservar Masivamente</string>
+    <string name="menu_select_all">Seleccionar Todo</string>
+    <string name="menu_search">Buscar</string>
+    <string name="selection_title">%1$d elementos seleccionados</string>
+    
+    <!-- Search -->
+    <string name="search_hint">Buscar suscripciones…</string>
+    <string name="clear_search">Limpiar búsqueda</string>
+    
+    <!-- Bulk actions -->
+    <string name="bulk_action_result_kept">%1$d suscripciones fueron conservadas.</string>
+    <string name="bulk_action_result_unsubscribed">%1$d suscripciones fueron canceladas.</string>
+    
+    <!-- General errors -->
+    <string name="error_generic">Ocurrió un error.</string>
+    <string name="error_no_unsubscribe_method">No se encontró un método de cancelación de suscripción automático.</string>
+    <string name="error_keep_failed">Ocurrió un error</string>
+    <string name="error_network">Error de conexión de red.</string>
+    
+    <!-- Loading states -->
+    <string name="loading_more">Cargando más…</string>
+    <string name="loading_completed">Carga completada</string>
+    
+    <!-- Repository -->
+    <string name="default_user_name">Usuario</string>
+    <string name="unknown_sender">Remitente Desconocido</string>
+    <string name="unsubscribe_subject">Unsubscribe</string>
+    
+    <!-- Database status -->
+    <string name="status_unsubscribed">UNSUBSCRIBED</string>
+    <string name="status_whitelisted">WHITELISTED</string>
+    
+    <!-- Action types -->
+    <string name="action_keep">KEEP</string>
+    <string name="action_unsubscribe">UNSUBSCRIBE</string>
+    
+    <!-- Fragment tags -->
+    <string name="fragment_tag_subscription_list">SubscriptionListFragment</string>
+</resources> 

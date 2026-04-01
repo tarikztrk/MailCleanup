@@ -35,10 +35,10 @@ class MainActivity : AppCompatActivity() {
                 val account = task.getResult(ApiException::class.java)
                 handleSignInSuccess(account)
             } catch (e: ApiException) {
-                viewModel.onSignInFailed("Giriş başarısız oldu. Kod: ${e.statusCode}")
+                viewModel.onSignInFailed(getString(R.string.error_sign_in_failed, e.statusCode.toString()))
             }
         } else {
-            viewModel.onSignInFailed("Giriş işlemi kullanıcı tarafından iptal edildi.")
+            viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
         }
     }
 
@@ -46,6 +46,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // YENİ: Toolbar'ı ayarla
+        setSupportActionBar(binding.toolbar)
 
         configureGoogleSignIn()
         setupClickListeners()
@@ -94,7 +97,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.scanState.collectLatest { state ->
                 when (state) {
-                    is ScanState.InProgress -> showLoadingView("Abonelikleriniz taranıyor...")
+                    is ScanState.InProgress -> showLoadingView(getString(R.string.status_scanning))
                     is ScanState.Success -> showSubscriptionList()
                     is ScanState.Error -> showSignInView(state.message)
                     is ScanState.Idle -> { /* SignInState tarafından yönetilecek */ }
@@ -105,7 +108,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.signInState.collectLatest { state ->
                 when (state) {
-                    is SignInState.InProgress -> showLoadingView("Giriş yapılıyor...")
+                    is SignInState.InProgress -> showLoadingView(getString(R.string.status_signing_in))
                     is SignInState.Idle -> showSignInView(null)
                     is SignInState.Error -> showSignInView(state.message)
                     is SignInState.Success -> { /* ScanState'e devredildi */ }
@@ -127,20 +130,20 @@ class MainActivity : AppCompatActivity() {
         binding.signInLayout.visibility = View.VISIBLE
         binding.progressBar.visibility = View.GONE
         binding.signInButton.visibility = View.VISIBLE
-        binding.statusTextView.text = errorMessage ?: "Giriş yapmak için butona tıklayın."
+        binding.statusTextView.text = errorMessage ?: getString(R.string.status_initial)
     }
 
     private fun showSubscriptionList() {
         binding.signInLayout.visibility = View.GONE
-        if (supportFragmentManager.findFragmentByTag("SubscriptionListFragment") == null) {
+        if (supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list)) == null) {
             supportFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, SubscriptionListFragment::class.java, null, "SubscriptionListFragment")
+                .replace(R.id.fragmentContainer, SubscriptionListFragment::class.java, null, getString(R.string.fragment_tag_subscription_list))
                 .commit()
         }
     }
 
     private fun removeFragment() {
-        supportFragmentManager.findFragmentByTag("SubscriptionListFragment")?.let {
+        supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list))?.let {
             supportFragmentManager.beginTransaction().remove(it).commit()
         }
     }

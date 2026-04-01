@@ -6,15 +6,20 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
+import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
+import androidx.appcompat.widget.SearchView
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -27,6 +32,7 @@ import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.data.Subscription
 import com.tarik.mailcleanup.data.UnsubscribeAction
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -38,6 +44,9 @@ class SubscriptionListFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var subscriptionAdapter: SubscriptionAdapter
     private var currentAccount: GoogleSignInAccount? = null
+    
+    // --- YENİ: Listenin sonuna gelinip gelinmediğini takip edecek bayrak ---
+    private var isLastPage = false
     private var actionMode: ActionMode? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -49,6 +58,7 @@ class SubscriptionListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         currentAccount = GoogleSignIn.getLastSignedInAccount(requireContext())
         setupRecyclerView()
+        setupMenu() // YENİ: Menüyü kur
         observeViewModel()
     }
 
@@ -66,23 +76,23 @@ class SubscriptionListFragment : Fragment() {
                 R.id.action_unsubscribe -> {
                     // Toplu çıkış için de bir onay diyaloğu gösterelim
                     MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("$selectedCount Abonelikten Çıkılsın mı?")
-                        .setMessage("Seçili $selectedCount göndericiden abonelikten çıkılacak. Ayrıca bu göndericilerden gelen tüm e-postalar temizlensin mi?")
-                        .setNegativeButton("Sadece Çık") { _, _ ->
+                        .setTitle(getString(R.string.unsubscribe_dialog_title))
+                        .setMessage(getString(R.string.unsubscribe_dialog_message, selectedCount.toString()))
+                        .setNegativeButton(getString(R.string.dialog_option_unsubscribe_only)) { _, _ ->
                             viewModel.bulkUnsubscribeSelected(currentAccount, cleanEmails = false)
+                            mode.finish() // İşlem başlatıldığı için modu kapat
                         }
-                        .setPositiveButton("Çık ve Temizle") { _, _ ->
+                        .setPositiveButton(getString(R.string.dialog_option_unsubscribe_and_clean)) { _, _ ->
                             viewModel.bulkUnsubscribeSelected(currentAccount, cleanEmails = true)
+                            mode.finish() // İşlem başlatıldığı için modu kapat
                         }
-                        .setNeutralButton("İptal", null)
+                        .setNeutralButton(getString(R.string.dialog_option_cancel), null)
                         .show()
-                    
-                    // mode.finish() BURADAN KALDIRILDI!
                     return true
                 }
                 R.id.action_keep -> {
-                    viewModel.bulkKeepSelected(currentAccount)
-                    // mode.finish() BURADAN KALDIRILDI!
+                    viewModel.bulkKeepSelected()
+                    mode.finish() // İşlem başlatıldığı için modu kapat
                     return true
                 }
                 R.id.action_select_all -> {
@@ -94,8 +104,7 @@ class SubscriptionListFragment : Fragment() {
         }
         override fun onDestroyActionMode(mode: ActionMode) {
             actionMode = null
-            // ViewModel'in seçim modunu zaten kapattığını varsayıyoruz.
-            // Ekstra bir clearSelection() çağırmaya gerek yok.
+            viewModel.clearSelection() // Mod kapandığında seçimi temizle
         }
     }
 
@@ -132,6 +141,12 @@ class SubscriptionListFragment : Fragment() {
         binding.subscriptionsRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
+                
+                // --- YENİ KONTROL: Eğer son sayfaya ulaşıldıysa, daha fazla istek gönderme ---
+                if (isLastPage) {
+                    return
+                }
+
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
                 val lastVisibleItemPosition = layoutManager.findLastVisibleItemPosition()
                 val totalItemCount = layoutManager.itemCount
@@ -145,18 +160,48 @@ class SubscriptionListFragment : Fragment() {
             }
         })
     }
+    
+    // --- YENİ FONKSİYON: Arama Menüsünü Kurma ---
+    private fun setupMenu() {
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.main_menu, menu)
+                val searchItem = menu.findItem(R.id.action_search)
+                val searchView = searchItem.actionView as SearchView
+
+                searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                    override fun onQueryTextSubmit(query: String?): Boolean {
+                        // Kullanıcı Enter'a bastığında
+                        return true
+                    }
+
+                    override fun onQueryTextChange(newText: String?): Boolean {
+                        // Kullanıcı her harf girdiğinde
+                        viewModel.setSearchQuery(newText.orEmpty())
+                        return true
+                    }
+                })
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                // Diğer menü öğeleri için
+                return true
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
 
     private fun showUnsubscribeConfirmationDialog(subscription: Subscription) {
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Abonelikten Çık ve Temizle?")
-            .setMessage("'${subscription.senderName}' aboneliğinden çıkılacak. Ayrıca bu göndericiden gelen mevcut tüm e-postalar çöp kutusuna taşınsın mı?")
-            .setNegativeButton("Sadece Çık") { _, _ ->
+            .setTitle(getString(R.string.unsubscribe_dialog_title))
+            .setMessage(getString(R.string.unsubscribe_dialog_message, subscription.senderName))
+            .setNegativeButton(getString(R.string.dialog_option_unsubscribe_only)) { _, _ ->
                 currentAccount?.let { viewModel.unsubscribeAndClean(it, subscription, cleanEmails = false) }
             }
-            .setPositiveButton("Evet, Çık ve Temizle") { _, _ ->
+            .setPositiveButton(getString(R.string.dialog_option_unsubscribe_and_clean)) { _, _ ->
                 currentAccount?.let { viewModel.unsubscribeAndClean(it, subscription, cleanEmails = true) }
             }
-            .setNeutralButton("İptal", null)
+            .setNeutralButton(getString(R.string.dialog_option_cancel), null)
             .show()
     }
 
@@ -164,7 +209,7 @@ class SubscriptionListFragment : Fragment() {
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.scanState.collectLatest { state ->
+            viewModel.scanState.collect { state ->
                 if (state is ScanState.Success) {
                     subscriptionAdapter.submitList(state.subscriptions)
                     // YENİ: Boş durum kontrolü
@@ -178,14 +223,14 @@ class SubscriptionListFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.unsubscribeState.collectLatest { state ->
+            viewModel.unsubscribeState.collect { state ->
                 when (state) {
                     is UnsubscribeState.InProgress -> subscriptionAdapter.setProcessingState(state.email)
                     is UnsubscribeState.Success -> {
                         subscriptionAdapter.setProcessingState(null)
                         val message = when (state.action) {
-                            is UnsubscribeAction.MailTo -> "'${state.email}' için çıkış e-postası gönderildi."
-                            else -> "İşlem başarılı."
+                            is UnsubscribeAction.MailTo -> getString(R.string.snackbar_unsubscribed_mailto, state.email)
+                            else -> getString(R.string.snackbar_unsubscribed_success)
                         }
                         showUndoSnackbar(message)
                         if (state.action is UnsubscribeAction.Http) {
@@ -202,34 +247,41 @@ class SubscriptionListFragment : Fragment() {
         }
         
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.keepState.collectLatest { state ->
+            viewModel.keepState.collect { state ->
                  when (state) {
-                    is KeepState.Success -> showUndoSnackbar("'${state.email}' korunanlara eklendi.")
-                    is KeepState.Error -> showSnackbar("'${state.email}' korunurken bir hata oluştu.", isError = true)
+                    is KeepState.Success -> showUndoSnackbar(getString(R.string.snackbar_kept, state.email))
+                    is KeepState.Error -> showSnackbar("'${state.email}' için hata: ${state.message}", isError = true)
                     else -> {}
                 }
             }
         }
         
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.loadMoreState.collectLatest { state ->
+            viewModel.loadMoreState.collect { state ->
+                // Gelen her durumu logla
+                Log.d("FragmentDebug", "Yeni loadMoreState alındı: ${state::class.simpleName}")
+
                 when (state) {
                     is LoadMoreState.InProgress -> {
+                        Log.d("FragmentDebug", "ProgressBar GÖSTERİLİYOR")
                         binding.loadMoreProgressBar.visibility = View.VISIBLE
                     }
-                    is LoadMoreState.Success, is LoadMoreState.NoMoreData, is LoadMoreState.Error -> {
+                    is LoadMoreState.NoMoreData -> {
+                        Log.d("FragmentDebug", "ProgressBar GİZLENİYOR")
+                        binding.loadMoreProgressBar.visibility = View.GONE
+                        Log.d("FragmentDebug", "isLastPage = true olarak ayarlandı.")
+                        isLastPage = true
+                        showSnackbar(getString(R.string.snackbar_all_loaded))
+                    }
+                    is LoadMoreState.Error -> {
+                        Log.d("FragmentDebug", "ProgressBar GİZLENİYOR")
+                        binding.loadMoreProgressBar.visibility = View.GONE
+                        showSnackbar(state.message, isError = true)
+                    }
+                    is LoadMoreState.Success, is LoadMoreState.Idle -> {
+                        Log.d("FragmentDebug", "ProgressBar GİZLENİYOR")
                         binding.loadMoreProgressBar.visibility = View.GONE
                     }
-                    else -> {
-                        binding.loadMoreProgressBar.visibility = View.GONE
-                    }
-                }
-
-                if (state is LoadMoreState.Error) {
-                    showSnackbar(state.message, isError = true)
-                }
-                if (state is LoadMoreState.NoMoreData) {
-                    showSnackbar("Tüm abonelikler yüklendi.", isError = false)
                 }
             }
         }
@@ -245,8 +297,10 @@ class SubscriptionListFragment : Fragment() {
         }
 
         viewModel.selectedItems.observe(viewLifecycleOwner) { selection ->
-            actionMode?.title = "${selection.size} öğe seçildi"
-            subscriptionAdapter.notifyDataSetChanged() // Seçim değiştiğinde listeyi yenile
+            actionMode?.title = getString(R.string.selection_title, selection.size)
+            // ListAdapter kullandığımız için, seçim değiştiğinde tüm listeyi
+            // yeniden göndermek en basit yöntemdir.
+            subscriptionAdapter.submitList(subscriptionAdapter.currentList.toList())
         }
 
         // YENİ: Toplu işlem sonucunu dinle
@@ -272,7 +326,7 @@ class SubscriptionListFragment : Fragment() {
     private fun showUndoSnackbar(message: String) {
         view?.let {
             Snackbar.make(it, message, Snackbar.LENGTH_LONG)
-                .setAction("Geri Al") {
+                .setAction(getString(R.string.snackbar_undo)) {
                     viewModel.undoLastAction()
                 }
                 .addCallback(object : Snackbar.Callback() {

@@ -1,0 +1,70 @@
+<resources>
+    <string name="app_name">Mail Cleanup</string>
+    
+    <!-- MainActivity -->
+    <string name="status_initial">Tap the button to sign in.</string>
+    <string name="status_signing_in">Signing in…</string>
+    <string name="status_scanning">Scanning your subscriptions…</string>
+    <string name="error_sign_in_failed">Sign-in failed. Code: %1$s</string>
+    <string name="error_sign_in_cancelled">Sign-in was cancelled.</string>
+    <string name="error_scan_failed">An error occurred while scanning subscriptions.</string>
+
+    <!-- SubscriptionListFragment -->
+    <string name="unsubscribe_dialog_title">Unsubscribe &amp; Clean?</string>
+    <string name="unsubscribe_dialog_message">Unsubscribe from \'%1$s\'. Also, move all existing emails from this sender to the trash?</string>
+    <string name="dialog_option_unsubscribe_only">Just Unsubscribe</string>
+    <string name="dialog_option_unsubscribe_and_clean">Unsubscribe &amp; Clean</string>
+    <string name="dialog_option_cancel">Cancel</string>
+    <string name="snackbar_unsubscribed_mailto">Unsubscribe email sent for \'%1$s\'.</string>
+    <string name="snackbar_unsubscribed_success">Action successful.</string>
+    <string name="snackbar_kept">\'%1$s\' was added to your keep list.</string>
+    <string name="snackbar_undo">Undo</string>
+    <string name="snackbar_all_loaded">All subscriptions have been loaded.</string>
+    <string name="empty_state_message">Congratulations, all subscriptions have been cleaned!</string>
+    
+    <!-- Buttons -->
+    <string name="button_unsubscribe">Unsubscribe</string>
+    <string name="button_keep">Keep</string>
+    <string name="button_sign_in">Sign in with Google</string>
+    
+    <!-- Menu items -->
+    <string name="menu_bulk_unsubscribe">Bulk Unsubscribe</string>
+    <string name="menu_bulk_keep">Bulk Keep</string>
+    <string name="menu_select_all">Select All</string>
+    <string name="menu_search">Search</string>
+    <string name="selection_title">%1$d items selected</string>
+    
+    <!-- Search -->
+    <string name="search_hint">Search subscriptions…</string>
+    <string name="clear_search">Clear search</string>
+    
+    <!-- Bulk actions -->
+    <string name="bulk_action_result_kept">%1$d subscriptions were kept.</string>
+    <string name="bulk_action_result_unsubscribed">%1$d subscriptions were unsubscribed.</string>
+    
+    <!-- General errors -->
+    <string name="error_generic">An error occurred.</string>
+    <string name="error_no_unsubscribe_method">Automatic unsubscribe method not found.</string>
+    <string name="error_keep_failed">Error occurred</string>
+    <string name="error_network">Network connection error.</string>
+    
+    <!-- Loading states -->
+    <string name="loading_more">Loading more…</string>
+    <string name="loading_completed">Loading completed</string>
+    
+    <!-- Repository -->
+    <string name="default_user_name">User</string>
+    <string name="unknown_sender">Unknown Sender</string>
+    <string name="unsubscribe_subject">Unsubscribe</string>
+    
+    <!-- Database status -->
+    <string name="status_unsubscribed">UNSUBSCRIBED</string>
+    <string name="status_whitelisted">WHITELISTED</string>
+    
+    <!-- Action types -->
+    <string name="action_keep">KEEP</string>
+    <string name="action_unsubscribe">UNSUBSCRIBE</string>
+    
+    <!-- Fragment tags -->
+    <string name="fragment_tag_subscription_list">SubscriptionListFragment</string>
+</resources> 

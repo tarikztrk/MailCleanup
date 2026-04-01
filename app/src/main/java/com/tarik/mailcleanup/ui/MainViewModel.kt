@@ -8,12 +8,16 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.data.EmailRepository
 import com.tarik.mailcleanup.data.Subscription
 import com.tarik.mailcleanup.data.UnsubscribeAction
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -58,8 +62,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = EmailRepository(application.applicationContext)
     private val _signInState = MutableSharedFlow<SignInState>(replay = 1)
     val signInState = _signInState.asSharedFlow()
-    private val _scanState = MutableSharedFlow<ScanState>(replay = 1)
-    val scanState = _scanState.asSharedFlow()
+    
+    // --- YENİ: ARAMA YÖNETİMİ ---
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+    
+    // --- GÜNCELLENMİŞ: allSubscriptions için bir StateFlow oluşturuyoruz ---
+    private val _allSubscriptions = MutableStateFlow<List<Subscription>>(emptyList())
+    
+    // --- GÜNCELLENMİŞ: scanState artık diğer Flow'ların birleşiminden oluşacak ---
+    // Bu, arama terimi veya ana liste değiştiğinde otomatik olarak güncellenen bir sonuç Flow'u yaratır.
+    val scanState: kotlinx.coroutines.flow.Flow<ScanState> = 
+        combine(_allSubscriptions, _searchQuery) { subscriptions, query ->
+            if (query.isBlank()) {
+                ScanState.Success(subscriptions) // Arama boşsa, tüm listeyi göster
+            } else {
+                val filteredList = subscriptions.filter {
+                    it.senderName.contains(query, ignoreCase = true) || 
+                    it.senderEmail.contains(query, ignoreCase = true)
+                }
+                ScanState.Success(filteredList) // Arama varsa, filtrelenmiş listeyi göster
+            }
+        }
+    
     private val _unsubscribeState = MutableSharedFlow<UnsubscribeState>()
     val unsubscribeState = _unsubscribeState.asSharedFlow()
     private val _keepState = MutableSharedFlow<KeepState>()
@@ -85,7 +110,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lastActionType: String? = null // "KEEP" veya "UNSUBSCRIBE"
     private var pendingCleanEmails: Boolean = false
 
-    private val allSubscriptions = mutableListOf<Subscription>()
     private var lastEndDate: Calendar? = null
     private var isLoadingMore = false
     private var noMoreData = false
@@ -94,10 +118,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         resetToIdleState()
     }
 
-    private fun updateScanState() {
-        // Bu yardımcı fonksiyon, ana listeyi sıralayıp Flow'u günceller.
-        val sortedList = allSubscriptions.sortedByDescending { it.emailCount }
-        _scanState.tryEmit(ScanState.Success(sortedList))
+    private fun updateSubscriptionList(list: List<Subscription>) {
+        _allSubscriptions.value = list.sortedByDescending { it.emailCount }
+    }
+    
+    // YENİ FONKSİYON
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
     fun onSignInStarted() {
@@ -105,66 +132,89 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onSignInSuccess(displayName: String?) {
-        _signInState.tryEmit(SignInState.Success(displayName ?: "Kullanıcı"))
+        _signInState.tryEmit(SignInState.Success(displayName ?: getApplication<Application>().getString(
+            R.string.default_user_name)))
     }
 
     fun onSignInFailed(errorMessage: String?) {
-        _signInState.tryEmit(SignInState.Error(errorMessage ?: "Bilinmeyen bir hata oluştu."))
+        _signInState.tryEmit(SignInState.Error(errorMessage ?: getApplication<Application>().getString(R.string.error_generic)))
     }
 
     fun startSubscriptionScan(account: GoogleSignInAccount) {
-        lastEndDate = null
-        isLoadingMore = false
-        noMoreData = false
-        allSubscriptions.clear() // Taramayı sıfırlarken listeyi temizle
-        _loadMoreState.tryEmit(LoadMoreState.Idle)
+        // Taramayı sıfırlarken tüm bayrakları temizle
+        resetToIdleState()
         
         viewModelScope.launch {
-            _scanState.tryEmit(ScanState.InProgress)
             try {
                 val (startDate, endDate) = getNextDateRange()
                 val subscriptions = repository.getSubscriptions(account, startDate, endDate)
-                allSubscriptions.addAll(subscriptions)
-                updateScanState() // Merkezi fonksiyonu çağır
-                lastEndDate = endDate
+                updateSubscriptionList(subscriptions)
+                lastEndDate = startDate // Bir sonraki aralık için başlangıç tarihi olacak
                 Log.d("MainViewModel", "İlk tarama tamamlandı: ${subscriptions.size} abonelik bulundu")
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Abonelik tarama hatası", e)
-                _scanState.tryEmit(ScanState.Error("Abonelikler taranırken bir hata oluştu."))
+                _allSubscriptions.value = emptyList()
+                 
             }
         }
     }
 
     fun loadMoreSubscriptions(account: GoogleSignInAccount) {
-        if (isLoadingMore || noMoreData) return
+        // --- BU KONTROL EN BAŞTA OLMALI ---
+        if (isLoadingMore || noMoreData) {
+            Log.d("ViewModelDebug", "loadMoreSubscriptions çağrıldı ama zaten yükleniyor veya veri bitti. isLoadingMore: $isLoadingMore, noMoreData: $noMoreData")
+            // Eğer zaten veri yoksa ve tekrar çağrıldıysa,
+            // ProgressBar'ın kapalı olduğundan emin olmak için NoMoreData'yı tekrar gönder.
+            if (noMoreData) {
+                Log.d("ViewModelDebug", "NoMoreData durumunu tekrar gönderiyorum (ProgressBar'ı kapatmak için)")
+                _loadMoreState.tryEmit(LoadMoreState.NoMoreData)
+            }
+            return
+        }
 
         viewModelScope.launch {
             isLoadingMore = true
-            _loadMoreState.tryEmit(LoadMoreState.InProgress)
             
             try {
+                // Tarih aralığını al ve kontrol et
                 val (startDate, endDate) = getNextDateRange()
-                val newSubscriptions = repository.getSubscriptions(account, startDate, endDate)
+                val oneYearAgo = Calendar.getInstance().apply { add(Calendar.YEAR, -1) }
                 
-                if (newSubscriptions.isNotEmpty()) {
-                    // Sadece gerçekten yeni olanları ekle
-                    val currentEmails = allSubscriptions.map { it.senderEmail }.toSet()
-                    val trulyNewItems = newSubscriptions.filter { !currentEmails.contains(it.senderEmail) }
-                    
-                    allSubscriptions.addAll(trulyNewItems)
-                    updateScanState() // Ana listeyi güncelle ve yayınla
-                    
-                    lastEndDate = endDate
-                    _loadMoreState.tryEmit(LoadMoreState.Success)
-                    Log.d("MainViewModel", "Daha fazla yükleme tamamlandı: ${trulyNewItems.size} yeni abonelik eklendi.")
-                } else {
+                if (startDate.before(oneYearAgo)) {
+                    Log.d("ViewModelDebug", "Tarama 1 yıl sınırına ulaştı. Direkt NoMoreData gönderiliyor.")
                     noMoreData = true
+                    Log.d("ViewModelDebug", "STATE -> NoMoreData")
                     _loadMoreState.tryEmit(LoadMoreState.NoMoreData)
-                    Log.d("MainViewModel", "Daha fazla abonelik bulunamadı, tarama tamamlandı.")
+                } else {
+                    // Sadece gerçek bir işlem yapacaksak InProgress gönder
+                    Log.d("ViewModelDebug", "STATE -> InProgress")
+                    _loadMoreState.tryEmit(LoadMoreState.InProgress)
+                    
+                    val newSubscriptions = repository.getSubscriptions(account, startDate, endDate)
+                    
+                    if (newSubscriptions.isNotEmpty()) {
+                        // Sadece gerçekten yeni olanları ekle
+                        val currentSubscriptions = _allSubscriptions.value
+                        val currentEmails = currentSubscriptions.map { it.senderEmail }.toSet()
+                        val trulyNewItems = newSubscriptions.filter { !currentEmails.contains(it.senderEmail) }
+                        
+                        val combinedList = currentSubscriptions + trulyNewItems
+                        updateSubscriptionList(combinedList)
+                        
+                        lastEndDate = startDate // Bitiş tarihi artık bir sonraki aralığın başlangıcı olacak
+                        Log.d("ViewModelDebug", "STATE -> Success")
+                        _loadMoreState.tryEmit(LoadMoreState.Success)
+                        Log.d("MainViewModel", "Daha fazla yükleme tamamlandı: ${trulyNewItems.size} yeni abonelik eklendi.")
+                    } else {
+                        noMoreData = true
+                        Log.d("ViewModelDebug", "STATE -> NoMoreData (Yeni abonelik bulunamadı)")
+                        _loadMoreState.tryEmit(LoadMoreState.NoMoreData)
+                        Log.d("MainViewModel", "Bu periyotta yeni abonelik bulunamadı, tarama tamamlanıyor.")
+                    }
                 }
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Daha fazla yükleme hatası", e)
-                _loadMoreState.tryEmit(LoadMoreState.Error("Daha fazla abonelik yüklenirken hata oluştu."))
+                Log.e("ViewModelDebug", "STATE -> Error: ${e.message}")
+                _loadMoreState.tryEmit(LoadMoreState.Error(getApplication<Application>().getString(R.string.error_generic)))
             } finally {
                 isLoadingMore = false
             }
@@ -178,12 +228,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         finalizePendingAction()
 
         // Adım 1: Öğeyi sadece UI'dan (yerel listeden) geçici olarak çıkar.
-        lastRemovedSubscriptionIndex = allSubscriptions.indexOfFirst { it.senderEmail == subscription.senderEmail }
+        val currentList = _allSubscriptions.value.toMutableList()
+        lastRemovedSubscriptionIndex = currentList.indexOfFirst { it.senderEmail == subscription.senderEmail }
         if (lastRemovedSubscriptionIndex != -1) {
-            lastRemovedSubscription = allSubscriptions.removeAt(lastRemovedSubscriptionIndex)
+            lastRemovedSubscription = currentList.removeAt(lastRemovedSubscriptionIndex)
             lastActionType = "UNSUBSCRIBE"
             pendingCleanEmails = cleanEmails
-            updateScanState()
+            updateSubscriptionList(currentList)
 
             // Adım 2: Gerçek işlemi yapacak olan Coroutine'i bir Job olarak planla, ama HENÜZ BAŞLATMA.
             pendingJob = viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
@@ -191,7 +242,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
                 val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
                 if (action is UnsubscribeAction.NotFound) {
-                    _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, "Abonelikten çıkma yöntemi bulunamadı."))
+                    _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, getApplication<Application>().getString(R.string.error_no_unsubscribe_method)))
                     undoLastAction(informUser = false) // Kullanıcıya tekrar bildirmeden geri al
                 } else {
                     _unsubscribeState.emit(UnsubscribeState.Success(subscription.senderEmail, action))
@@ -208,16 +259,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun keepSubscription(subscription: Subscription) {
         finalizePendingAction()
 
-        lastRemovedSubscriptionIndex = allSubscriptions.indexOfFirst { it.senderEmail == subscription.senderEmail }
+        val currentList = _allSubscriptions.value.toMutableList()
+        lastRemovedSubscriptionIndex = currentList.indexOfFirst { it.senderEmail == subscription.senderEmail }
         if (lastRemovedSubscriptionIndex != -1) {
-            lastRemovedSubscription = allSubscriptions.removeAt(lastRemovedSubscriptionIndex)
+            lastRemovedSubscription = currentList.removeAt(lastRemovedSubscriptionIndex)
             lastActionType = "KEEP"
-            updateScanState()
+            updateSubscriptionList(currentList)
             
             pendingJob = viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
                 val success = repository.keepSubscription(subscription)
                 if (!success) {
-                    _keepState.emit(KeepState.Error(subscription.senderEmail, "Hata oluştu"))
+                    _keepState.emit(KeepState.Error(subscription.senderEmail, getApplication<Application>().getString(R.string.error_keep_failed)))
                     undoLastAction(informUser = false)
                 }
             }
@@ -235,8 +287,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         lastRemovedSubscription?.let {
             if (lastRemovedSubscriptionIndex != -1) {
-                allSubscriptions.add(lastRemovedSubscriptionIndex, it)
-                updateScanState()
+                val currentList = _allSubscriptions.value.toMutableList()
+                currentList.add(lastRemovedSubscriptionIndex, it)
+                updateSubscriptionList(currentList)
             }
         }
         
@@ -265,6 +318,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun getNextDateRange(): Pair<Calendar, Calendar> {
+        // Bir sonraki periyodun başlangıcı, bir öncekinin bitişidir.
         val endDate = (lastEndDate?.clone() as? Calendar) ?: Calendar.getInstance()
         val startDate = endDate.clone() as Calendar
         startDate.add(Calendar.DAY_OF_YEAR, -30)
@@ -297,10 +351,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectAll() {
-        val currentState = scanState.replayCache.firstOrNull()
-        if (currentState is ScanState.Success) {
-            _selectedItems.value = currentState.subscriptions.toSet()
-        }
+        _selectedItems.value = _allSubscriptions.value.toSet()
     }
 
     fun getSelectedItemsCount(): Int {
@@ -309,8 +360,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- YENİ: TOPLU İŞLEM FONKSİYONLARI ---
 
-    fun bulkKeepSelected(account: GoogleSignInAccount?) {
-        if (account == null) return
+    fun bulkKeepSelected() {
         // SEÇİLİ ÖĞELERİ İŞLEM BAŞINDA BİR DEĞİŞKENE ALIYORUZ.
         val itemsToKeep = _selectedItems.value ?: return
         if (itemsToKeep.isEmpty()) return
@@ -319,8 +369,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var successCount = 0
             
             // Önce UI'ı güncelle
-            allSubscriptions.removeAll(itemsToKeep)
-            updateScanState()
+            val currentList = _allSubscriptions.value.toMutableList()
+            currentList.removeAll(itemsToKeep)
+            updateSubscriptionList(currentList)
 
             // Arka planda veritabanı işlemlerini yap
             itemsToKeep.forEach { subscription ->
@@ -330,7 +381,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             // İşlem sonucunu bildir
-            _bulkActionResult.emit("$successCount abonelik korundu.")
+            _bulkActionResult.emit(getApplication<Application>().getString(R.string.bulk_action_result_kept, successCount))
             
             // İŞLEM BİTTİKTEN SONRA SEÇİMİ TEMİZLE
             clearSelection()
@@ -347,8 +398,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var successCount = 0
             
             // Önce UI'ı güncelle
-            allSubscriptions.removeAll(itemsToUnsubscribe)
-            updateScanState()
+            val currentList = _allSubscriptions.value.toMutableList()
+            currentList.removeAll(itemsToUnsubscribe)
+            updateSubscriptionList(currentList)
             
             itemsToUnsubscribe.forEach { subscription ->
                 val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
@@ -359,7 +411,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Bu yüzden sadece mailto ile olanlar sessizce işlenir.
             }
 
-            _bulkActionResult.emit("$successCount abonelikten çıkıldı.")
+            _bulkActionResult.emit(getApplication<Application>().getString(R.string.bulk_action_result_unsubscribed, successCount))
             
             // İŞLEM BİTTİKTEN SONRA SEÇİMİ TEMİZLE
             clearSelection()
@@ -368,9 +420,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetToIdleState() {
         _signInState.tryEmit(SignInState.Idle)
-        _scanState.tryEmit(ScanState.Idle)
         _loadMoreState.tryEmit(LoadMoreState.Idle)
-        allSubscriptions.clear()
+        _allSubscriptions.value = emptyList()
+        _searchQuery.value = ""
         lastEndDate = null
         isLoadingMore = false
         noMoreData = false
