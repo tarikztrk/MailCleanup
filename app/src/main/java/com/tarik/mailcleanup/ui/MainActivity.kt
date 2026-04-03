@@ -2,8 +2,8 @@ package com.tarik.mailcleanup.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -80,6 +80,12 @@ class MainActivity : AppCompatActivity() {
         binding.signInButton.setOnClickListener {
             signIn()
         }
+        binding.outlookButton.setOnClickListener {
+            Toast.makeText(this, getString(R.string.error_provider_not_supported), Toast.LENGTH_SHORT).show()
+        }
+        binding.imapTextButton.setOnClickListener {
+            Toast.makeText(this, getString(R.string.error_provider_not_supported), Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun signIn() {
@@ -119,21 +125,34 @@ class MainActivity : AppCompatActivity() {
 
     private fun showLoadingView(message: String) {
         removeFragment()
+        binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.VISIBLE
         binding.progressBar.visibility = View.VISIBLE
         binding.signInButton.visibility = View.GONE
+        binding.outlookButton.visibility = View.GONE
+        binding.imapTextButton.visibility = View.GONE
+        binding.statusTextView.visibility = View.VISIBLE
         binding.statusTextView.text = message
     }
 
     private fun showSignInView(errorMessage: String?) {
         removeFragment()
+        binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.VISIBLE
         binding.progressBar.visibility = View.GONE
         binding.signInButton.visibility = View.VISIBLE
-        binding.statusTextView.text = errorMessage ?: getString(R.string.status_initial)
+        binding.outlookButton.visibility = View.VISIBLE
+        binding.imapTextButton.visibility = View.VISIBLE
+        if (errorMessage.isNullOrBlank()) {
+            binding.statusTextView.visibility = View.GONE
+        } else {
+            binding.statusTextView.visibility = View.VISIBLE
+            binding.statusTextView.text = errorMessage
+        }
     }
 
     private fun showSubscriptionList() {
+        binding.appBarLayout.visibility = View.VISIBLE
         binding.signInLayout.visibility = View.GONE
         if (supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list)) == null) {
             supportFragmentManager.beginTransaction()

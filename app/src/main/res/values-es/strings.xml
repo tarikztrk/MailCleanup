@@ -26,7 +26,7 @@
     <!-- Buttons -->
     <string name="button_unsubscribe">Darse de Baja</string>
     <string name="button_keep">Conservar</string>
-    <string name="button_sign_in">Iniciar sesión con Google</string>
+    <string name="button_sign_in">Conectar con Google</string>
     
     <!-- Menu items -->
     <string name="menu_bulk_unsubscribe">Baja Masiva</string>

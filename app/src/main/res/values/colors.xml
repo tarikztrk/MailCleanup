@@ -2,5 +2,13 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="selected_item_background">#E0E0E0</color> <!-- Açık gri tonu -->
+    <color name="selected_item_background">#E0E0E0</color>
+    <color name="surface_background">#F3F4F6</color>
+    <color name="surface_text_primary">#15181B</color>
+    <color name="surface_text_secondary">#444A57</color>
+    <color name="surface_text_tertiary">#858B97</color>
+    <color name="secondary_text">#2F546D</color>
+    <color name="brand_primary">#0A4EC8</color>
+    <color name="brand_primary_dark">#0A3C90</color>
+    <color name="divider_line">#DCE2EA</color>
 </resources>

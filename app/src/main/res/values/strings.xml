@@ -8,6 +8,26 @@
     <string name="error_sign_in_failed">Giriş başarısız oldu. Kod: %1$s</string>
     <string name="error_sign_in_cancelled">Giriş işlemi iptal edildi.</string>
     <string name="error_scan_failed">Abonelikler taranırken bir hata oluştu.</string>
+    <string name="error_provider_not_supported">Bu sağlayıcı henüz aktif değil.</string>
+    <string name="brand_title">The Curator</string>
+    <string name="onboarding_badge">INBOX CLARITY</string>
+    <string name="onboarding_headline_top">Curation begins</string>
+    <string name="onboarding_headline_bottom">with connection.</string>
+    <string name="onboarding_intro">We scan your subscriptions to build a minimalist dashboard, letting you clean up your inbox in minutes without deleting a single important thought.</string>
+    <string name="benefit_title_sorting">Smart Sorting</string>
+    <string name="benefit_desc_sorting">We group 500+ newsletters into clean, readable categories.</string>
+    <string name="benefit_title_privacy">Privacy First</string>
+    <string name="benefit_desc_privacy">We only read metadata. Your private conversations stay private.</string>
+    <string name="connect_card_title">Connect Your Email</string>
+    <string name="connect_card_subtitle">Select your primary provider to start curating.</string>
+    <string name="button_outlook">Connect with Outlook</string>
+    <string name="button_imap_smtp">Configure other IMAP/SMTP provider</string>
+    <string name="onboarding_or">OR</string>
+    <string name="onboarding_disclaimer">By connecting, you agree to our Terms of Service and acknowledge our Privacy Policy. We use bank-level encryption to secure your connection.</string>
+    <string name="onboarding_footer_copyright">© 2024 The Curator Design System. All rights reserved.</string>
+    <string name="onboarding_footer_security">Security Center</string>
+    <string name="onboarding_footer_data">Data Residency</string>
+    <string name="onboarding_footer_support">Contact Support</string>
 
     <!-- SubscriptionListFragment -->
     <string name="unsubscribe_dialog_title">Abonelikten Çık ve Temizle?</string>
@@ -25,7 +45,7 @@
     <!-- Buttons -->
     <string name="button_unsubscribe">Çık</string>
     <string name="button_keep">Koru</string>
-    <string name="button_sign_in">Google ile Giriş Yap</string>
+    <string name="button_sign_in">Connect with Google</string>
     
     <!-- Menu items -->
     <string name="menu_bulk_unsubscribe">Toplu Çıkış</string>

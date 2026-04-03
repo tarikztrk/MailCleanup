@@ -25,7 +25,7 @@
     <!-- Buttons -->
     <string name="button_unsubscribe">Unsubscribe</string>
     <string name="button_keep">Keep</string>
-    <string name="button_sign_in">Sign in with Google</string>
+    <string name="button_sign_in">Connect with Google</string>
     
     <!-- Menu items -->
     <string name="menu_bulk_unsubscribe">Bulk Unsubscribe</string>
