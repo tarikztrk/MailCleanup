@@ -27,6 +27,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.Properties
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 import javax.inject.Inject
 import javax.mail.Session
@@ -40,6 +41,68 @@ import javax.mail.internet.MimeMessage
 class GmailRemoteDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    private data class AdaptiveThrottle(
+        val minBatchSize: Int,
+        val maxBatchSize: Int,
+        val initialBatchSize: Int,
+        val minInterBatchDelayMs: Long,
+        val maxInterBatchDelayMs: Long,
+        val initialInterBatchDelayMs: Long
+    ) {
+        var batchSize: Int = initialBatchSize
+            private set
+        var interBatchDelayMs: Long = initialInterBatchDelayMs
+            private set
+        private var successStreak: Int = 0
+
+        fun onAttemptResult(totalRequests: Int, failedRequests: Int, rateLimitFailures: Int) {
+            if (totalRequests <= 0) return
+
+            val failureRatio = failedRequests.toDouble() / totalRequests.toDouble()
+            val rateLimited = rateLimitFailures > 0
+
+            when {
+                rateLimited || failureRatio >= 0.25 -> {
+                    // Hata döneminde hız düşür: daha küçük batch + daha fazla bekleme.
+                    batchSize = (batchSize * 0.7).toInt().coerceIn(minBatchSize, maxBatchSize)
+                    interBatchDelayMs = (interBatchDelayMs + 220L).coerceIn(minInterBatchDelayMs, maxInterBatchDelayMs)
+                    successStreak = 0
+                }
+                failedRequests == 0 -> {
+                    // Arka arkaya başarı varsa temkinli şekilde hızı geri artır.
+                    successStreak++
+                    if (successStreak >= 3) {
+                        batchSize = (batchSize + 2).coerceIn(minBatchSize, maxBatchSize)
+                        interBatchDelayMs = (interBatchDelayMs - 80L).coerceIn(minInterBatchDelayMs, maxInterBatchDelayMs)
+                        successStreak = 0
+                    }
+                }
+                else -> {
+                    successStreak = 0
+                }
+            }
+        }
+
+        fun retryDelayMs(retryCount: Int, rateLimited: Boolean): Long {
+            val exponential = 350L * (1L shl retryCount.coerceAtMost(5))
+            val penalty = if (rateLimited) interBatchDelayMs else interBatchDelayMs / 2
+            return (exponential + penalty).coerceAtMost(maxInterBatchDelayMs + 2000L)
+        }
+    }
+
+    private fun isRateLimitMessage(message: String?): Boolean {
+        val normalized = message?.lowercase().orEmpty()
+        return normalized.contains("too many concurrent requests") ||
+            normalized.contains("rate limit") ||
+            normalized.contains("quota") ||
+            normalized.contains("userrate") ||
+            normalized.contains("429")
+    }
+
+    private fun isRateLimitError(error: GoogleJsonError): Boolean {
+        val reasons = error.errors?.joinToString(" ") { it.reason ?: "" }.orEmpty()
+        return isRateLimitMessage("${error.message} $reasons")
+    }
 
     suspend fun fetchSubscriptions(
         account: MailAccount,
@@ -60,18 +123,31 @@ class GmailRemoteDataSource @Inject constructor(
             .execute()
 
         val messageIds = messageIdResponse.messages ?: return@withContext emptyList()
+        val allMessageIds = messageIds.map { it.id }
         val subscriptionsMap = mutableMapOf<String, Subscription>()
 
-        // "Too many concurrent requests for user" hatasını azaltmak için küçük batch'ler.
-        val chunks = messageIds.chunked(20)
+        // Runtime sinyaline göre batch boyutu/bekleme ayarlayan throttle.
+        val throttle = AdaptiveThrottle(
+            minBatchSize = 4,
+            maxBatchSize = 24,
+            initialBatchSize = 12,
+            minInterBatchDelayMs = 70L,
+            maxInterBatchDelayMs = 2800L,
+            initialInterBatchDelayMs = 180L
+        )
         val maxRetries = 4
+        var cursor = 0
 
-        chunks.forEachIndexed { chunkIndex, chunk ->
-            var pendingIds = chunk.map { it.id }
+        while (cursor < allMessageIds.size) {
+            val chunkSize = throttle.batchSize
+            val endExclusive = (cursor + chunkSize).coerceAtMost(allMessageIds.size)
+            var pendingIds: List<String> = allMessageIds.subList(cursor, endExclusive)
             var retryCount = 0
+            cursor = endExclusive
 
             while (pendingIds.isNotEmpty() && retryCount <= maxRetries) {
                 val failedIds = ConcurrentLinkedQueue<String>()
+                val rateLimitFailures = AtomicInteger(0)
                 try {
                     // Her chunk için tek batch request: ağ maliyetini azaltır.
                     val batch = gmail.batch()
@@ -98,6 +174,9 @@ class GmailRemoteDataSource @Inject constructor(
 
                             override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
                                 failedIds.add(messageId)
+                                if (isRateLimitError(e)) {
+                                    rateLimitFailures.incrementAndGet()
+                                }
                                 Log.e("GmailRemoteDataSource", "Batch fetch onFailure: ${e.message}")
                             }
                         }
@@ -110,22 +189,37 @@ class GmailRemoteDataSource @Inject constructor(
                     batch.execute()
                 } catch (e: Exception) {
                     Log.e("GmailRemoteDataSource", "Batch execute error: ${e.message}", e)
+                    if (isRateLimitMessage(e.message)) {
+                        rateLimitFailures.incrementAndGet()
+                    }
                     pendingIds.forEach { failedIds.add(it) }
                 }
 
                 val nextPending = failedIds.toList().distinct()
+                throttle.onAttemptResult(
+                    totalRequests = pendingIds.size,
+                    failedRequests = nextPending.size,
+                    rateLimitFailures = rateLimitFailures.get()
+                )
+
                 if (nextPending.isEmpty()) break
 
                 pendingIds = nextPending
                 retryCount++
                 if (retryCount <= maxRetries) {
-                    // Basit exponential backoff + küçük jitter etkisi.
-                    val backoff = 400L * (1L shl retryCount.coerceAtMost(5))
-                    delay(backoff + (chunkIndex % 5) * 120L)
+                    delay(throttle.retryDelayMs(retryCount, rateLimitFailures.get() > 0))
                 }
+            }
+
+            if (cursor < allMessageIds.size) {
+                delay(throttle.interBatchDelayMs)
             }
         }
 
+        Log.d(
+            "GmailRemoteDataSource",
+            "Fetch tamamlandi. ToplamId=${allMessageIds.size}, batchSize=${throttle.batchSize}, interDelayMs=${throttle.interBatchDelayMs}"
+        )
         subscriptionsMap.values.map { it.copy(emailCount = it.messageIds.size) }
     }
 
@@ -179,37 +273,68 @@ class GmailRemoteDataSource @Inject constructor(
 
         if (allMessageIds.isEmpty()) return
 
-        // Silme/trash işlemlerinde daha küçük chunk, rate-limit riskini düşürür.
-        val deleteChunks = allMessageIds.chunked(10)
-        deleteChunks.forEachIndexed { index, chunk ->
+        val throttle = AdaptiveThrottle(
+            minBatchSize = 3,
+            maxBatchSize = 12,
+            initialBatchSize = 8,
+            minInterBatchDelayMs = 120L,
+            maxInterBatchDelayMs = 3000L,
+            initialInterBatchDelayMs = 320L
+        )
+        var cursor = 0
+
+        while (cursor < allMessageIds.size) {
+            val endExclusive = (cursor + throttle.batchSize).coerceAtMost(allMessageIds.size)
+            var pendingIds: List<String> = allMessageIds.subList(cursor, endExclusive)
+            cursor = endExclusive
             var retryCount = 0
             val maxRetries = 3
-            while (retryCount <= maxRetries) {
+            while (pendingIds.isNotEmpty() && retryCount <= maxRetries) {
+                val failedIds = ConcurrentLinkedQueue<String>()
+                val rateLimitFailures = AtomicInteger(0)
                 try {
                     val batch = gmail.batch()
-                    val callback = object : JsonBatchCallback<Message>() {
-                        override fun onSuccess(message: Message?, responseHeaders: HttpHeaders?) = Unit
-                        override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) = Unit
-                    }
 
-                    for (id in chunk) {
+                    for (id in pendingIds) {
+                        val callback = object : JsonBatchCallback<Message>() {
+                            override fun onSuccess(message: Message?, responseHeaders: HttpHeaders?) = Unit
+                            override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
+                                failedIds.add(id)
+                                if (isRateLimitError(e)) {
+                                    rateLimitFailures.incrementAndGet()
+                                }
+                                Log.e("GmailRemoteDataSource", "Batch delete onFailure: ${e.message}")
+                            }
+                        }
                         gmail.users().messages().trash("me", id).queue(batch, callback)
                     }
                     batch.execute()
-                    break
                 } catch (e: Exception) {
-                    retryCount++
-                    val isRateLimit = e.message?.contains("Too many concurrent requests") == true ||
-                        e.message?.contains("Rate limit") == true
-                    if (isRateLimit && retryCount <= maxRetries) {
-                        // Rate limit'te kontrollü bekleme.
-                        delay(2000L * retryCount)
-                    } else {
-                        break
+                    if (isRateLimitMessage(e.message)) {
+                        rateLimitFailures.incrementAndGet()
                     }
+                    Log.e("GmailRemoteDataSource", "Batch delete execute error: ${e.message}", e)
+                    pendingIds.forEach { failedIds.add(it) }
+                }
+
+                val nextPending = failedIds.toList().distinct()
+                throttle.onAttemptResult(
+                    totalRequests = pendingIds.size,
+                    failedRequests = nextPending.size,
+                    rateLimitFailures = rateLimitFailures.get()
+                )
+                if (nextPending.isEmpty()) break
+
+                pendingIds = nextPending
+                retryCount++
+                if (retryCount <= maxRetries) {
+                    delay(throttle.retryDelayMs(retryCount, rateLimitFailures.get() > 0))
                 }
             }
-            if (index < deleteChunks.size - 1) delay(500L)
+
+            if (cursor < allMessageIds.size) {
+                delay(throttle.interBatchDelayMs)
+            }
         }
     }
 
