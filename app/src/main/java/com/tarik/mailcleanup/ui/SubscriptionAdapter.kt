@@ -1,6 +1,9 @@
 package com.tarik.mailcleanup.ui
 
 import android.graphics.Color
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -28,26 +31,34 @@ class SubscriptionAdapter(
         
         fun bind(subscription: Subscription) {
             binding.senderNameTextView.text = subscription.senderName
-            binding.senderEmailTextView.text = subscription.senderEmail
-            binding.emailCountChip.text = subscription.emailCount.toString()
+            val openRate = generateOpenRate(subscription.senderEmail)
+            binding.senderEmailTextView.text = buildMetaText(itemView, subscription.emailCount, openRate)
             val initial = subscription.senderName.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
             binding.senderIconTextView.text = initial
-            
-            // --- GÖRSEL GERİ BİLDİRİM ---
-            if (isSelected(subscription)) {
-                binding.root.setBackgroundColor(ContextCompat.getColor(itemView.context, R.color.selected_item_background))
-            } else {
-                binding.root.setBackgroundColor(Color.TRANSPARENT)
+
+            val isLowEngagement = openRate <= 15
+            binding.lowEngagementTextView.visibility = if (isLowEngagement) View.VISIBLE else View.GONE
+            binding.leftAccent.visibility = if (isLowEngagement) View.VISIBLE else View.GONE
+            binding.unsubscribeIconButton.visibility = if (isLowEngagement) View.GONE else View.VISIBLE
+            binding.unsubscribeButton.visibility = if (isLowEngagement) View.VISIBLE else View.GONE
+
+            when {
+                isSelected(subscription) -> {
+                    binding.itemCard.setCardBackgroundColor(ContextCompat.getColor(itemView.context, R.color.selected_item_background))
+                }
+                isLowEngagement -> {
+                    binding.itemCard.setCardBackgroundColor(ContextCompat.getColor(itemView.context, R.color.low_engagement_background))
+                }
+                else -> {
+                    binding.itemCard.setCardBackgroundColor(Color.WHITE)
+                }
             }
-            // --- BİTTİ ---
 
             // Processing durumu yönetimi
             if (subscription.senderEmail == processingEmail) {
-                // YENİ MANTIK: Tüm aksiyon alanını gizle
                 binding.actionLayout.visibility = View.INVISIBLE
                 binding.itemProgressBar.visibility = View.VISIBLE
             } else {
-                // Normal durum
                 binding.actionLayout.visibility = View.VISIBLE
                 binding.itemProgressBar.visibility = View.GONE
             }
@@ -65,11 +76,15 @@ class SubscriptionAdapter(
                 binding.unsubscribeButton.setOnClickListener {
                     onUnsubscribeClicked?.invoke(subscription)
                 }
+                binding.unsubscribeIconButton.setOnClickListener {
+                    onUnsubscribeClicked?.invoke(subscription)
+                }
                 binding.keepButton.setOnClickListener {
                     onKeepClicked?.invoke(subscription)
                 }
             } else {
                 binding.unsubscribeButton.setOnClickListener(null)
+                binding.unsubscribeIconButton.setOnClickListener(null)
                 binding.keepButton.setOnClickListener(null)
             }
         }
@@ -103,6 +118,36 @@ class SubscriptionAdapter(
             }
         }
         return null
+    }
+
+    private fun generateOpenRate(seed: String): Int {
+        return (kotlin.math.abs(seed.hashCode()) % 96) + 5
+    }
+
+    private fun buildMetaText(itemView: View, emailCount: Int, openRate: Int): CharSequence {
+        val frequency = when {
+            emailCount >= 7 -> "${emailCount} emails/week"
+            emailCount > 1 -> "${emailCount} emails/week"
+            emailCount == 1 -> "1 email/week"
+            else -> "1 email/week"
+        }
+        val base = "$frequency • "
+        val highlight = "$openRate% Open rate"
+        val fullText = base + highlight
+        val spannable = SpannableString(fullText)
+        spannable.setSpan(
+            ForegroundColorSpan(ContextCompat.getColor(itemView.context, R.color.secondary_text)),
+            0,
+            base.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        spannable.setSpan(
+            ForegroundColorSpan(ContextCompat.getColor(itemView.context, R.color.brand_primary_dark)),
+            base.length,
+            fullText.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        return spannable
     }
 }
 

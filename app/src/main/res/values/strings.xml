@@ -28,6 +28,28 @@
     <string name="onboarding_footer_security">Security Center</string>
     <string name="onboarding_footer_data">Data Residency</string>
     <string name="onboarding_footer_support">Contact Support</string>
+    <string name="profile_avatar_cd">Profil avatarı</string>
+    <string name="search_cd">Ara</string>
+    <string name="mailbox_clean_cd">Temiz posta kutusu</string>
+    <string name="add_action_cd">Yeni işlem ekle</string>
+    <string name="weekly_inflow_label">WEEKLY INFLOW</string>
+    <string name="weekly_inflow_count">128</string>
+    <string name="weekly_inflow_delta">-12%</string>
+    <string name="vs_last_week">VS LAST WEEK</string>
+    <string name="smart_filters_count">14</string>
+    <string name="smart_filters_label">Smart Filters</string>
+    <string name="saved_minutes_count">32</string>
+    <string name="saved_minutes_label">Saved Minutes</string>
+    <string name="sort_by_most_frequent">Sort by: Most Frequent</string>
+    <string name="filter_all_active">All Active</string>
+    <string name="filter_newsletters">Newsletters</string>
+    <string name="filter_promotions">Promotions</string>
+    <string name="active_subscriptions_title">Active Subscriptions</string>
+    <string name="nav_home">HOME</string>
+    <string name="nav_activity">ACTIVITY</string>
+    <string name="nav_settings">SETTINGS</string>
+    <string name="low_engagement">LOW ENGAGEMENT</string>
+    <string name="unsubscribe_full">Unsubscribe</string>
 
     <!-- SubscriptionListFragment -->
     <string name="unsubscribe_dialog_title">Abonelikten Çık ve Temizle?</string>

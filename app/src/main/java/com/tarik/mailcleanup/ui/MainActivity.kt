@@ -13,6 +13,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.gmail.GmailScopes
 import com.tarik.mailcleanup.R
@@ -29,16 +30,20 @@ class MainActivity : AppCompatActivity() {
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            if (account != null) {
                 handleSignInSuccess(account)
-            } catch (e: ApiException) {
+            } else {
+                viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
+            }
+        } catch (e: ApiException) {
+            if (e.statusCode == CommonStatusCodes.CANCELED) {
+                viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
+            } else {
                 viewModel.onSignInFailed(getString(R.string.error_sign_in_failed, e.statusCode.toString()))
             }
-        } else {
-            viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
         }
     }
 
@@ -152,7 +157,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSubscriptionList() {
-        binding.appBarLayout.visibility = View.VISIBLE
+        binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.GONE
         if (supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list)) == null) {
             supportFragmentManager.beginTransaction()

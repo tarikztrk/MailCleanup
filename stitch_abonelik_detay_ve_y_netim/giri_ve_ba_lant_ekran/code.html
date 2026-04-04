@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Connect Your Email | The Curator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#d9dadb",
+              "on-primary-fixed-variant": "#0040a1",
+              "surface-bright": "#f8f9fa",
+              "error": "#ba1a1a",
+              "secondary-fixed": "#cbe7f5",
+              "on-tertiary": "#ffffff",
+              "on-secondary": "#ffffff",
+              "on-tertiary-container": "#ffcdc8",
+              "on-primary": "#ffffff",
+              "on-surface-variant": "#424654",
+              "on-error-container": "#93000a",
+              "error-container": "#ffdad6",
+              "on-secondary-container": "#4e6874",
+              "tertiary-fixed": "#ffdad6",
+              "secondary-fixed-dim": "#afcbd8",
+              "tertiary-fixed-dim": "#ffb3ac",
+              "primary-fixed-dim": "#b2c5ff",
+              "tertiary": "#940010",
+              "outline": "#737785",
+              "background": "#f8f9fa",
+              "on-error": "#ffffff",
+              "outline-variant": "#c3c6d6",
+              "on-tertiary-fixed": "#410003",
+              "secondary": "#48626e",
+              "primary-fixed": "#dae2ff",
+              "on-secondary-fixed": "#021f29",
+              "on-tertiary-fixed-variant": "#930010",
+              "surface-tint": "#0056d2",
+              "on-primary-container": "#ccd8ff",
+              "inverse-primary": "#b2c5ff",
+              "surface-variant": "#e1e3e4",
+              "on-primary-fixed": "#001847",
+              "surface-container-highest": "#e1e3e4",
+              "on-secondary-fixed-variant": "#304a55",
+              "surface-container": "#edeeef",
+              "on-surface": "#191c1d",
+              "on-background": "#191c1d",
+              "secondary-container": "#cbe7f5",
+              "primary": "#0040a1",
+              "primary-container": "#0056d2",
+              "inverse-on-surface": "#f0f1f2",
+              "surface-container-high": "#e7e8e9",
+              "surface-container-low": "#f3f4f5",
+              "tertiary-container": "#ba1b20",
+              "surface": "#f8f9fa",
+              "surface-container-lowest": "#ffffff",
+              "inverse-surface": "#2e3132"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .editorial-gradient {
+            background: linear-gradient(135deg, #0040a1 0%, #0056d2 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        .soft-glow {
+            box-shadow: 0 40px 40px -20px rgba(25, 28, 29, 0.04);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body text-on-background min-h-screen flex flex-col">
+<!-- Header (Logo Only for focus) -->
+<header class="w-full px-6 py-8 md:px-12">
+<div class="max-w-7xl mx-auto flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-headline font-extrabold text-2xl tracking-tight text-on-surface">The Curator</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</div>
+<div class="hidden md:block text-secondary text-sm font-medium">
+                Step 1 of 3: Connectivity
+            </div>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center px-6 pb-12">
+<div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+<!-- Left Side: Editorial Content -->
+<div class="space-y-8">
+<div class="space-y-4">
+<span class="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-label text-xs font-semibold uppercase tracking-widest">
+                        Inbox Clarity
+                    </span>
+<h1 class="font-headline font-extrabold text-4xl md:text-6xl text-on-surface leading-[1.1] tracking-tight">
+                        Curation begins <br/><span class="text-primary">with connection.</span>
+</h1>
+<p class="text-on-surface-variant text-lg md:text-xl leading-relaxed max-w-lg">
+                        We scan your subscriptions to build a minimalist dashboard, letting you clean up your inbox in minutes without deleting a single important thought.
+                    </p>
+</div>
+<!-- Bento-style Benefit Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="p-6 rounded-xl bg-surface-container-low transition-colors hover:bg-surface-container-high border border-outline-variant/10">
+<span class="material-symbols-outlined text-primary mb-3" data-icon="auto_awesome">auto_awesome</span>
+<h3 class="font-headline font-bold text-on-surface mb-1">Smart Sorting</h3>
+<p class="text-sm text-on-surface-variant">We group 500+ newsletters into clean, readable categories.</p>
+</div>
+<div class="p-6 rounded-xl bg-surface-container-low transition-colors hover:bg-surface-container-high border border-outline-variant/10">
+<span class="material-symbols-outlined text-primary mb-3" data-icon="shield_with_heart">shield_with_heart</span>
+<h3 class="font-headline font-bold text-on-surface mb-1">Privacy First</h3>
+<p class="text-sm text-on-surface-variant">We only read metadata. Your private conversations stay private.</p>
+</div>
+</div>
+</div>
+<!-- Right Side: Interaction Area -->
+<div class="relative">
+<!-- Abstract Decorative Element -->
+<div class="absolute -top-12 -right-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10"></div>
+<div class="absolute -bottom-12 -left-12 w-48 h-48 bg-secondary/5 rounded-full blur-3xl -z-10"></div>
+<div class="surface-container-lowest glass-panel p-8 md:p-12 rounded-[2rem] soft-glow border border-outline-variant/15 relative overflow-hidden">
+<div class="mb-10 text-center">
+<h2 class="font-headline font-bold text-2xl text-on-surface mb-2">Connect Your Email</h2>
+<p class="text-on-surface-variant text-sm">Select your primary provider to start curating.</p>
+</div>
+<div class="space-y-4">
+<!-- Primary Action: Google -->
+<button class="w-full flex items-center justify-between p-4 rounded-xl editorial-gradient text-on-primary font-label font-semibold transition-transform active:scale-[0.98] group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+<img alt="Google" class="w-5 h-5" data-alt="Official Google G logo in brand colors on a clean white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRxxbMj3Ect0PUqv_HM-E-Nj8JyLJuuxXrGWxZOIMW_BUt9r2KPEfhqhPWVyzn4T5dBg0N1LT49uvIaOwpeExZCp7EBpjIEYCr-RNO-QYyiVmpJ7czRpkCNqICvmN6kPGMySDAPHLIyik5in6y7I3B2Gm83KctQgtDtr2589_IjSRPQtD7UiBXC_h3C5BESNekvusJ8wTdlG2u7KJ5kCro5krfSP_m8nN_a5c339eQshqxbkbP2AKAUIeA6oQK9kfTaw7FDI2WY73p"/>
+</div>
+<span>Connect with Google</span>
+</div>
+<span class="material-symbols-outlined text-on-primary/70 group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- Secondary Action: Outlook -->
+<button class="w-full flex items-center justify-between p-4 rounded-xl bg-surface-container-high text-on-surface font-label font-semibold transition-colors hover:bg-surface-variant active:scale-[0.98] group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+<img alt="Outlook" class="w-5 h-5" data-alt="Official Microsoft Outlook icon with blue envelope and stylized O on white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqnQh6_Q2vAelhwVRNS9n9sTf7GFWMVcdIkrb5eodBsv11d8oca99tlOjN8Pasd5AhdXTTLsPDdWCO9EfYwPyH2GmEE_WcYIK0wcVoNZ-XRvJnXJGhrlP1KgwSuzYk55hO1-Nx6wK7RiV8V4qSdA-Ag_zPnEuXl_iL_OMNoQdo4UGyNm9Qd1Aasw9SH7VsYp1HtOxrIxv0DjkGLT5CpuPbeZnrPSyfTgw5UbF4V98oLnClziOGlf21_uANsiYqRphJY8NMhScqr9jm"/>
+</div>
+<span>Connect with Outlook</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<div class="relative py-4">
+<div class="absolute inset-0 flex items-center"><div class="w-full border-t border-outline-variant/20"></div></div>
+<div class="relative flex justify-center text-xs uppercase tracking-widest text-on-surface-variant/60 bg-white/0"><span class="bg-[#ffffff] px-4 font-bold">OR</span></div>
+</div>
+<!-- Tertiary Action: IMAP -->
+<button class="w-full py-4 text-center text-secondary font-label font-medium hover:text-primary transition-colors text-sm underline-offset-4 hover:underline">
+                            Configure other IMAP/SMTP provider
+                        </button>
+</div>
+<div class="mt-10 p-4 rounded-xl bg-surface-container-low/50 flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-sm mt-0.5" data-icon="info">info</span>
+<p class="text-[11px] leading-relaxed text-on-surface-variant/80">
+                            By connecting, you agree to our <a class="text-primary font-semibold" href="#">Terms of Service</a> and acknowledge our <a class="text-primary font-semibold" href="#">Privacy Policy</a>. We use bank-level encryption to secure your connection.
+                        </p>
+</div>
+</div>
+<!-- Floating Illustration Element -->
+<div class="absolute -bottom-6 -right-6 hidden xl:block">
+<div class="bg-surface-container-lowest p-4 rounded-2xl soft-glow border border-outline-variant/20 flex items-center gap-4 max-w-[240px]">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-fixed-variant" data-icon="stacked_line_chart">stacked_line_chart</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-secondary tracking-tighter">Analyzed Today</p>
+<p class="font-headline font-extrabold text-lg text-on-surface">1.2M Emails</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full px-6 py-8 border-t border-outline-variant/10">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-secondary text-xs font-medium">
+<p>© 2024 The Curator Design System. All rights reserved.</p>
+<div class="flex gap-8">
+<a class="hover:text-primary transition-colors" href="#">Security Center</a>
+<a class="hover:text-primary transition-colors" href="#">Data Residency</a>
+<a class="hover:text-primary transition-colors" href="#">Contact Support</a>
+</div>
+</div>
+</footer>
+</body></html>

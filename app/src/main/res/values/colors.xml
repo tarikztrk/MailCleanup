@@ -11,4 +11,5 @@
     <color name="brand_primary">#0A4EC8</color>
     <color name="brand_primary_dark">#0A3C90</color>
     <color name="divider_line">#DCE2EA</color>
+    <color name="low_engagement_background">#F3ECEC</color>
 </resources>

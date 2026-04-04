@@ -21,7 +21,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -133,9 +132,6 @@ class SubscriptionListFragment : Fragment() {
             }
         )
         binding.subscriptionsRecyclerView.adapter = subscriptionAdapter
-        binding.subscriptionsRecyclerView.addItemDecoration(
-            DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
-        )
         
         // Sonsuz kaydırma için scroll listener ekle
         binding.subscriptionsRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
