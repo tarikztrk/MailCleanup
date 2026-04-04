@@ -425,13 +425,13 @@ class SubscriptionListFragment : Fragment() {
             repeatCount = AlphaAnimation.INFINITE
             interpolator = LinearInterpolator()
         }
-        binding.initialLoadingOverlay.startAnimation(animation)
+        binding.skeletonContent.startAnimation(animation)
         isSkeletonAnimating = true
     }
 
     private fun stopSkeletonPulse() {
         if (!isSkeletonAnimating || _binding == null) return
-        binding.initialLoadingOverlay.clearAnimation()
+        binding.skeletonContent.clearAnimation()
         isSkeletonAnimating = false
     }
 }
