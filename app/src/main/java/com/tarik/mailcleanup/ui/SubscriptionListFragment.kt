@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MenuItem
-import android.widget.EditText
 import android.view.animation.AlphaAnimation
 import android.view.animation.LinearInterpolator
 import android.view.View
@@ -139,7 +138,7 @@ class SubscriptionListFragment : Fragment() {
 
     private fun setupDashboardControls() {
         binding.searchButton.setOnClickListener {
-            showSearchDialog()
+            openSearchScreen()
         }
 
         binding.sortControl.setOnClickListener { anchor ->
@@ -167,25 +166,16 @@ class SubscriptionListFragment : Fragment() {
         }
 
     }
-
-    private fun showSearchDialog() {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.search_hint)
-            setText(viewModel.uiState.value.searchQuery)
-            setSelection(text.length)
-        }
-
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.search_cd))
-            .setView(input)
-            .setPositiveButton(getString(R.string.search_apply)) { _, _ ->
-                viewModel.setSearchQuery(input.text?.toString().orEmpty())
-            }
-            .setNeutralButton(getString(R.string.search_clear)) { _, _ ->
-                viewModel.setSearchQuery("")
-            }
-            .setNegativeButton(getString(R.string.dialog_option_cancel), null)
-            .show()
+    private fun openSearchScreen() {
+        parentFragmentManager.beginTransaction()
+            .replace(
+                R.id.fragmentContainer,
+                SearchFragment::class.java,
+                null,
+                getString(R.string.fragment_tag_search)
+            )
+            .addToBackStack(getString(R.string.fragment_tag_search))
+            .commit()
     }
 
     private fun showSortMenu(anchor: View) {

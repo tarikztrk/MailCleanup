@@ -18,6 +18,7 @@ class SubscriptionPagingSource(
     private val sort: SubscriptionSort,
     private val getSubscriptionsUseCase: GetSubscriptionsUseCase
 ) : PagingSource<Int, Subscription>() {
+    private val emittedSenderEmails = hashSetOf<String>()
 
     override fun getRefreshKey(state: PagingState<Int, Subscription>): Int? {
         return state.anchorPosition?.let { anchor ->
@@ -59,9 +60,13 @@ class SubscriptionPagingSource(
                             SubscriptionSort.A_TO_Z -> uniqueByEmail.sortedBy { it.senderName.lowercase() }
                         }
 
-                        if (sorted.isNotEmpty()) {
+                        val dedupedAcrossPages = sorted.filter { subscription ->
+                            emittedSenderEmails.add(subscription.senderEmail.lowercase())
+                        }
+
+                        if (dedupedAcrossPages.isNotEmpty()) {
                             return LoadResult.Page(
-                                data = sorted,
+                                data = dedupedAcrossPages,
                                 prevKey = if (page == 0) null else page - 1,
                                 nextKey = page + 1
                             )

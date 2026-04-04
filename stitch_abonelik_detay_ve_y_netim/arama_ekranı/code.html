@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Search Subscriptions | The Curator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1d",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "surface-variant": "#e1e3e4",
+                        "primary-fixed": "#dae2ff",
+                        "surface": "#f8f9fa",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-secondary-fixed-variant": "#304a55",
+                        "tertiary-fixed": "#ffdad6",
+                        "outline-variant": "#c3c6d6",
+                        "inverse-surface": "#2e3132",
+                        "outline": "#737785",
+                        "surface-container-high": "#e7e8e9",
+                        "secondary-fixed": "#cbe7f5",
+                        "on-surface-variant": "#424654",
+                        "on-surface": "#191c1d",
+                        "background": "#f8f9fa",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-primary": "#ffffff",
+                        "secondary": "#48626e",
+                        "on-error-container": "#93000a",
+                        "primary": "#0040a1",
+                        "tertiary": "#940010",
+                        "surface-bright": "#f8f9fa",
+                        "surface-tint": "#0056d2",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed": "#021f29",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#afcbd8",
+                        "on-tertiary-container": "#ffcdc8",
+                        "on-secondary-container": "#4e6874",
+                        "surface-container-low": "#f3f4f5",
+                        "on-primary-container": "#ccd8ff",
+                        "on-primary-fixed-variant": "#0040a1",
+                        "tertiary-container": "#ba1b20",
+                        "inverse-primary": "#b2c5ff",
+                        "primary-container": "#0056d2",
+                        "secondary-container": "#cbe7f5",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "on-primary-fixed": "#001847",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#edeeef",
+                        "on-tertiary-fixed": "#410003",
+                        "on-tertiary-fixed-variant": "#930010"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .search-active-ring {
+            box-shadow: 0 0 0 2px #0056d2;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-slate-50 dark:bg-slate-950 flex items-center justify-between px-6 py-4 w-full sticky top-0 z-50">
+<div class="flex items-center gap-4 w-full">
+<button class="text-blue-700 dark:text-blue-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors p-2 rounded-full scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex-1 relative group">
+<input class="w-full bg-surface-container-lowest border-none py-3 px-5 pr-12 rounded-2xl text-on-surface placeholder-outline focus:ring-2 focus:ring-primary-container transition-all search-active-ring font-body" placeholder="Search Subscriptions" type="text" value="Morning"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+<span class="w-[2px] h-6 bg-primary animate-pulse mr-2"></span>
+<button class="text-slate-500 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-3xl mx-auto px-6 mt-8">
+<!-- Live Search Results Section -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="text-on-surface font-headline font-bold text-xl tracking-tight">Search Results</h2>
+<span class="text-sm font-label text-secondary px-3 py-1 bg-surface-container-low rounded-full">3 matches</span>
+</div>
+<div class="space-y-4">
+<!-- Result Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-4 hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="w-16 h-16 rounded-xl overflow-hidden bg-primary-fixed flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Modern minimalist logo for a daily newsletter featuring a stylized coffee cup and sun rising in clean blue lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaSXGbVQDMsdYD--QjZR-745BpFJPCfQKYg7QmI9humKy1c-_Zg79vRtLi4OP6q5iob0dvh_SJY6fYC3TVFePQNv-2jJF6eiAkm-16U8KmE7k9ekJACkf8PS1IRTyDcus92zmKtP7nmrT7NHhUPfI7QMgh1fme_rRqxz3TJ3MeFsw91WbYBNz2AfMM2sI4ZwAPbo-0finMsYJeMkVK9xOoy8OeNRB83TcXcipyw7PMhG2rBbQBuSw54mXTIqpr2CLolKzhfInWMz3D"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<h3 class="font-headline font-bold text-lg text-on-surface">Morning Brew</h3>
+<span class="material-symbols-outlined text-primary text-sm" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<p class="text-on-surface-variant font-body text-sm truncate">Become smarter in just 5 minutes. Get the daily news you need...</p>
+<div class="mt-2 flex gap-2">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-container/20 px-2 py-0.5 rounded-md">Business</span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-secondary bg-secondary-container/30 px-2 py-0.5 rounded-md">Daily</span>
+</div>
+</div>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-bold px-4 py-2 rounded-xl text-sm transition-all scale-95 active:scale-90">
+                        View
+                    </button>
+</div>
+<!-- Result Card 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-4 hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="w-16 h-16 rounded-xl overflow-hidden bg-secondary-fixed flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Artistic abstract book cover with soft orange and blue watercolor strokes for a literary subscription service" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDk1qK_D9T2ASpumOURyahpi5ViTi5NceH9Md9jmDgbIaomQugjqiF7yNdHlje4bIxzcQpyxnH0M5S2hZnVDrsmjT_IuowbmNAwOJP911V4VoRmsDHOWW3FxNQD2ayWF6SDOSW4uVFUbX_sIFZLHLqFmrXPjPRQ5lbGW7XQTdw5SKgnpzoVvRWi5kn2kfsrxYNY6UtxjYuXFAfBeg-x_zegMLN1zF4aPUjp-Dt2YuzCJhg9ZtVkS6J2bYu3LQPbVHOEOuFeSRLPHzy3"/>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-headline font-bold text-lg text-on-surface">Morning Pages</h3>
+<p class="text-on-surface-variant font-body text-sm truncate">A Substack dedicated to creative writing and journaling prompts...</p>
+<div class="mt-2 flex gap-2">
+<span class="text-[10px] font-bold uppercase tracking-wider text-tertiary bg-tertiary-fixed/40 px-2 py-0.5 rounded-md">Creative</span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-secondary bg-secondary-container/30 px-2 py-0.5 rounded-md">Weekly</span>
+</div>
+</div>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-bold px-4 py-2 rounded-xl text-sm transition-all scale-95 active:scale-90">
+                        View
+                    </button>
+</div>
+<!-- Result Card 3 -->
+<div class="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-4 hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="w-16 h-16 rounded-xl overflow-hidden bg-surface-container flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Technological circuit patterns in deep blue and neon white glowing softly for a tech news subscription" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBD_r62DXoHUO_zIycScS35wKfUaM13gsXG8lgiRXrSyUmB51UAwgBQONJfmLf-D99YVKEP-cFp_8jipd8Gx0cfevQWZkDrTSMCwhT7Kr0ERNaNUQQe4FPL3r3KS_87HYhGZGT59pxIMK8qz8swLVFr7ceKPLzuz31vN1v47GUb9lAi6t9LwbnL8V3PRlM4paBHZwB6ZH77h3unVpWkiMYmej4CoGCHUvys9d0agMM-u8NUaK0Tfd_QQwPt562eRaevzLIPdqBQKiY"/>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-headline font-bold text-lg text-on-surface">The Morning Byte</h3>
+<p class="text-on-surface-variant font-body text-sm truncate">Technology and AI trends delivered to your inbox every morning...</p>
+<div class="mt-2 flex gap-2">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-container/20 px-2 py-0.5 rounded-md">Tech</span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-secondary bg-secondary-container/30 px-2 py-0.5 rounded-md">Daily</span>
+</div>
+</div>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-bold px-4 py-2 rounded-xl text-sm transition-all scale-95 active:scale-90">
+                        View
+                    </button>
+</div>
+</div>
+</section>
+<!-- Suggested/Recent Searches (Asymmetric Layout) -->
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-100/10 shadow-xl shadow-blue-900/5">
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 scale-90 duration-200 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard_customize">dashboard_customize</span>
+<span class="font-headline text-xs font-semibold mt-1">Curator</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 scale-90 duration-200 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-headline text-xs font-semibold mt-1">Discover</span>
+</a>
+<!-- Active Tab: Search -->
+<a class="flex flex-col items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl px-4 py-2 scale-90 duration-200 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="search" style="font-variation-settings: 'FILL' 1;">search</span>
+<span class="font-headline text-xs font-semibold mt-1">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 scale-90 duration-200 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-headline text-xs font-semibold mt-1">Settings</span>
+</a>
+</nav>
+</body></html>
