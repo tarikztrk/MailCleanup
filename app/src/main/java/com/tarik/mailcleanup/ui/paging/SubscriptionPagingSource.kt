@@ -8,6 +8,10 @@ import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
 import java.util.Calendar
 
+/**
+ * Zaman penceresi (30 gün) bazlı sayfalama yapar.
+ * Bir pencere boşsa otomatik olarak daha eski pencereye geçer.
+ */
 class SubscriptionPagingSource(
     private val account: MailAccount,
     private val getSubscriptionsUseCase: GetSubscriptionsUseCase
@@ -22,6 +26,7 @@ class SubscriptionPagingSource(
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Subscription> {
         return try {
+            // Maksimum 1 yıl geçmişe bakarak sorgu maliyetini sınırlarız.
             val oneYearAgo = Calendar.getInstance().apply { add(Calendar.YEAR, -1) }
             var page = params.key ?: 0
 
@@ -43,6 +48,7 @@ class SubscriptionPagingSource(
 
                 when (val result = getSubscriptionsUseCase(account, startDate, endDate)) {
                     is DomainResult.Success -> {
+                        // Aynı gönderen birden fazla kez gelirse en yüksek emailCount'u koruruz.
                         val uniqueByEmail = result.data
                             .groupBy { it.senderEmail }
                             .map { (_, items) -> items.maxByOrNull { it.emailCount } ?: items.first() }

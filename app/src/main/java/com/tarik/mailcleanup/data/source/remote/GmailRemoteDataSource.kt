@@ -33,6 +33,10 @@ import javax.mail.Session
 import javax.mail.internet.InternetAddress
 import javax.mail.internet.MimeMessage
 
+/**
+ * Gmail API ile konuşan remote data source.
+ * Abonelik tespiti, unsubscribe header parsing ve opsiyonel temizleme burada yapılır.
+ */
 class GmailRemoteDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
@@ -43,6 +47,7 @@ class GmailRemoteDataSource @Inject constructor(
         endDate: Calendar,
         processedByEmail: Map<String, ProcessedSubscription>
     ): List<Subscription> = withContext(Dispatchers.IO) {
+        // Tüm Gmail çağrıları IO dispatcher üzerinde çalıştırılır.
         val gmail = buildGmail(account)
 
         val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.US)
@@ -57,6 +62,7 @@ class GmailRemoteDataSource @Inject constructor(
         val messageIds = messageIdResponse.messages ?: return@withContext emptyList()
         val subscriptionsMap = mutableMapOf<String, Subscription>()
 
+        // "Too many concurrent requests for user" hatasını azaltmak için küçük batch'ler.
         val chunks = messageIds.chunked(20)
         val maxRetries = 4
 
@@ -67,6 +73,7 @@ class GmailRemoteDataSource @Inject constructor(
             while (pendingIds.isNotEmpty() && retryCount <= maxRetries) {
                 val failedIds = ConcurrentLinkedQueue<String>()
                 try {
+                    // Her chunk için tek batch request: ağ maliyetini azaltır.
                     val batch = gmail.batch()
 
                     pendingIds.forEach { messageId ->
@@ -78,6 +85,7 @@ class GmailRemoteDataSource @Inject constructor(
                                     val processedEntry = processedByEmail[email]
                                     val emailDate = message.internalDate ?: 0L
                                     if (processedEntry == null || emailDate > processedEntry.processedAt) {
+                                        // Aynı gönderen için tek kayıt biriktirip message id'leri altında topluyoruz.
                                         synchronized(subscriptionsMap) {
                                             val subscription = subscriptionsMap.getOrPut(email) {
                                                 Subscription(senderName = name, senderEmail = email)
@@ -111,6 +119,7 @@ class GmailRemoteDataSource @Inject constructor(
                 pendingIds = nextPending
                 retryCount++
                 if (retryCount <= maxRetries) {
+                    // Basit exponential backoff + küçük jitter etkisi.
                     val backoff = 400L * (1L shl retryCount.coerceAtMost(5))
                     delay(backoff + (chunkIndex % 5) * 120L)
                 }
@@ -156,6 +165,7 @@ class GmailRemoteDataSource @Inject constructor(
     }
 
     private suspend fun cleanEmailsFromSender(gmail: Gmail, senderEmail: String) {
+        // Gönderene ait tüm mesaj id'lerini sayfalar halinde topluyoruz.
         val allMessageIds = mutableListOf<String>()
         var pageToken: String? = null
         do {
@@ -169,6 +179,7 @@ class GmailRemoteDataSource @Inject constructor(
 
         if (allMessageIds.isEmpty()) return
 
+        // Silme/trash işlemlerinde daha küçük chunk, rate-limit riskini düşürür.
         val deleteChunks = allMessageIds.chunked(10)
         deleteChunks.forEachIndexed { index, chunk ->
             var retryCount = 0
@@ -191,6 +202,7 @@ class GmailRemoteDataSource @Inject constructor(
                     val isRateLimit = e.message?.contains("Too many concurrent requests") == true ||
                         e.message?.contains("Rate limit") == true
                     if (isRateLimit && retryCount <= maxRetries) {
+                        // Rate limit'te kontrollü bekleme.
                         delay(2000L * retryCount)
                     } else {
                         break
@@ -202,6 +214,7 @@ class GmailRemoteDataSource @Inject constructor(
     }
 
     private fun parseUnsubscribeHeader(header: String): UnsubscribeAction {
+        // RFC'deki yaygın iki formu destekliyoruz: <mailto:...> ve <https://...>
         val httpRegex = "<(https?://[^>]+)>".toRegex()
         val mailtoRegex = "<mailto:([^>]+)>".toRegex()
 

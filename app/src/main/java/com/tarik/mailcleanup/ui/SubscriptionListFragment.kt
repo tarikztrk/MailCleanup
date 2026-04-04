@@ -34,6 +34,10 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+/**
+ * Abonelik listesini render eden ekran.
+ * Paging stream'i dinler, seçim modunu yönetir ve UI event'lerini tüketir.
+ */
 @AndroidEntryPoint
 class SubscriptionListFragment : Fragment() {
 
@@ -138,6 +142,7 @@ class SubscriptionListFragment : Fragment() {
         binding.subscriptionsRecyclerView.adapter = subscriptionAdapter
 
         subscriptionAdapter.addOnPagesUpdatedListener {
+            // "Select all" için ekranda görünen güncel elemanları ViewModel'e bildiriyoruz.
             val visible = mutableListOf<Subscription>()
             for (index in 0 until subscriptionAdapter.itemCount) {
                 subscriptionAdapter.peek(index)?.let { visible.add(it) }
@@ -222,6 +227,7 @@ class SubscriptionListFragment : Fragment() {
 
                         errorState?.let {
                             Log.e("SubscriptionListFragment", "Paging error", it.error)
+                            // DomainPagingException varsa kullanıcıya doğru hata sınıfını gösterir.
                             val message = (it.error as? DomainPagingException)
                                 ?.let { domainException -> domainErrorToMessage(domainException.domainError) }
                                 ?: getString(R.string.error_generic)
@@ -236,6 +242,7 @@ class SubscriptionListFragment : Fragment() {
                         subscriptionAdapter.setProcessingState(state.processingEmail)
                         val currentSelectedEmails = state.selectedItems.map { it.senderEmail }.toSet()
                         if (currentSelectedEmails != lastSelectedEmails) {
+                            // Sadece değişen satırlar yeniden çizilir.
                             subscriptionAdapter.notifySelectionChanged(lastSelectedEmails, currentSelectedEmails)
                             lastSelectedEmails = currentSelectedEmails
                         }
@@ -256,6 +263,7 @@ class SubscriptionListFragment : Fragment() {
 
                 launch {
                     viewModel.uiEvent.collect { event ->
+                        // Event'ler tek seferlik tüketilir (state içinde tutulmaz).
                         when (event) {
                             is MainUiEvent.ShowUndo -> showUndoSnackbar(event.message)
                             is MainUiEvent.ShowError -> showSnackbar(event.message, isError = true)

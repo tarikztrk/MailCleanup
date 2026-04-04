@@ -28,6 +28,7 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+        <!-- Giriş/onboarding ekranı: sign-in ve sağlayıcı seçim kartlarını içerir. -->
         <androidx.core.widget.NestedScrollView
             android:id="@+id/signInLayout"
             android:layout_width="match_parent"
@@ -373,6 +374,7 @@
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
 
+        <!-- Sign-in sonrası abonelik listesi ekranı bu container içine yüklenir. -->
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragmentContainer"
             android:layout_width="match_parent"

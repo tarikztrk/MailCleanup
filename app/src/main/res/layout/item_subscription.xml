@@ -18,6 +18,7 @@
         android:layout_height="wrap_content"
         android:padding="12dp">
 
+        <!-- Düşük etkileşimli satırlarda solda kırmızı vurgu çubuğu görünür. -->
         <View
             android:id="@+id/leftAccent"
             android:layout_width="3dp"
@@ -129,6 +130,7 @@
                 android:visibility="gone" />
         </FrameLayout>
 
+        <!-- Satır bazında unsubscribe işlemi sürerken gösterilir. -->
         <ProgressBar
             android:id="@+id/itemProgressBar"
             style="?android:attr/progressBarStyle"

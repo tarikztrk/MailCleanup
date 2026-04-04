@@ -6,6 +6,10 @@ import com.tarik.mailcleanup.data.ProcessedSubscription
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
+/**
+ * Room üzerinde çalışan local data source.
+ * Repository bu sınıfı kullanarak local state'i yönetir.
+ */
 class ProcessedSubscriptionLocalDataSource @Inject constructor(
     @ApplicationContext context: Context
 ) {

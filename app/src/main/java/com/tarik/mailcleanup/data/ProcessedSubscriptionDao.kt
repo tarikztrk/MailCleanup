@@ -5,6 +5,9 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
+/**
+ * İşlenen abonelikler için Room erişim katmanı.
+ */
 @Dao
 interface ProcessedSubscriptionDao {
     // Bir kaydı ekler veya varsa günceller.

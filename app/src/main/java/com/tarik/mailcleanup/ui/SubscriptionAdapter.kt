@@ -15,6 +15,10 @@ import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.ItemSubscriptionBinding
 import com.tarik.mailcleanup.domain.model.Subscription
 
+/**
+ * PagingDataAdapter ile abonelik kartlarını render eder.
+ * Selection ve processing state'i item bazında günceller.
+ */
 class SubscriptionAdapter(
     private val clickListener: (Subscription) -> Unit,
     private val longClickListener: (Subscription) -> Boolean,
@@ -67,6 +71,7 @@ class SubscriptionAdapter(
             }
 
             if (subscription.senderEmail == processingEmail) {
+                // O satırda işlem devam ederken aksiyon butonlarını gizle.
                 binding.actionLayout.visibility = View.INVISIBLE
                 binding.itemProgressBar.visibility = View.VISIBLE
             } else {
@@ -115,11 +120,13 @@ class SubscriptionAdapter(
         val previousProcessingEmail = processingEmail
         processingEmail = email
 
+        // Sadece eski/yeni processing item'larını invalidate et.
         previousProcessingEmail?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
         email?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
     }
 
     fun notifySelectionChanged(previousSelectedEmails: Set<String>, currentSelectedEmails: Set<String>) {
+        // Seçim set farkı ile minimum redraw.
         val changed = (previousSelectedEmails + currentSelectedEmails) - (previousSelectedEmails intersect currentSelectedEmails)
         changed.forEach { email ->
             findPositionByEmail(email)?.let { pos -> notifyItemChanged(pos) }

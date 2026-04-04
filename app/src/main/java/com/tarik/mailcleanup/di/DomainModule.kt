@@ -10,6 +10,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Use-case nesnelerini repository bağımlılığı ile üretir.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object DomainModule {

@@ -1,5 +1,9 @@
 package com.tarik.mailcleanup.domain.model
 
+/**
+ * Data katmanından UI'ya taşınan normalize hata türleri.
+ * Böylece ekran tarafında string karşılaştırması yapılmaz.
+ */
 sealed interface DomainError {
     data object Generic : DomainError
     data object Auth : DomainError

@@ -308,6 +308,7 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+        <!-- Abonelik kartlarının listelendiği asıl kaydırılabilir alan. -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/subscriptionsRecyclerView"
             android:layout_width="match_parent"
@@ -357,6 +358,7 @@
             tools:visibility="visible" />
     </FrameLayout>
 
+    <!-- Sabit alt navigasyon (görsel amaçlı, şu an tek ekran aktif). -->
     <LinearLayout
         android:id="@+id/bottomNavBar"
         android:layout_width="match_parent"
@@ -449,6 +451,7 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- Yeni aksiyonlar için ayrılan FAB. -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="56dp"

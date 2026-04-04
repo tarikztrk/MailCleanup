@@ -30,6 +30,10 @@ import com.tarik.mailcleanup.domain.model.MailAccount
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/**
+ * Uygulama giriş ekranı + Google hesap yetkilendirme orkestrasyonu.
+ * Sign-in başarılı olunca liste fragment'ını açar.
+ */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
@@ -41,6 +45,7 @@ class MainActivity : AppCompatActivity() {
 
     private var pendingMailAccount: MailAccount? = null
 
+    // Authorization sonucu kullanıcı onayı gerektiriyorsa IntentSender ile geri döner.
     private val authorizationResolutionLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -85,6 +90,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Daha önce giriş yapıldıysa sessiz yetki kontrolü ile doğrudan listeye geçmeyi dener.
         val cached = loadCachedMailAccount()
         if (cached != null) {
             requestGmailAuthorization(cached, silentOnly = true)
@@ -109,6 +115,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.onSignInStarted()
         lifecycleScope.launch {
             runCatching {
+                // Credential Manager ile Google kimliği alınır.
                 val request = GetCredentialRequest.Builder()
                     .addCredentialOption(
                         GetGoogleIdOption.Builder()
@@ -129,6 +136,7 @@ class MainActivity : AppCompatActivity() {
                     val accountName = googleIdTokenCredential.id
                     val email = googleIdTokenCredential.id
                     val mailAccount = MailAccount(accountName = accountName, email = email)
+                    // Kimlik alındıktan sonra Gmail scope izni ayrı adımda istenir.
                     requestGmailAuthorization(mailAccount, silentOnly = false)
                 } else {
                     viewModel.onSignInFailed(getString(R.string.error_sign_in_failed, "unsupported_credential"))
@@ -145,6 +153,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestGmailAuthorization(account: MailAccount, silentOnly: Boolean) {
+        // Gmail modify scope: unsubscribe + mail temizleme için gerekli.
         val request = AuthorizationRequest.Builder()
             .setRequestedScopes(listOf(Scope(GmailScopes.GMAIL_MODIFY)))
             .setAccount(Account(account.accountName, "com.google"))
@@ -169,6 +178,7 @@ class MainActivity : AppCompatActivity() {
         silentOnly: Boolean
     ) {
         when {
+            // Sessiz çağrıda resolution açmıyoruz; kullanıcıyı beklenmedik popup ile bölmeyelim.
             result.hasResolution() && !silentOnly -> {
                 pendingMailAccount = account
                 val pendingIntent = result.pendingIntent
@@ -193,6 +203,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSignInSuccess(account: MailAccount) {
+        // Uygulama yeniden açıldığında otomatik devam edebilmek için hesap bilgisi cache'lenir.
         cacheMailAccount(account)
         viewModel.onSignInSuccess()
         viewModel.startSubscriptionScan(account)
@@ -203,6 +214,7 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.uiState.collect { state ->
+                        // Activity seviyesinde yalnızca "hangi ekran görünmeli" kararı verilir.
                         when {
                             state.scanStatus is ScanUiStatus.InProgress -> showLoadingView(getString(R.string.status_scanning))
                             state.scanStatus is ScanUiStatus.Success -> showSubscriptionList()
@@ -251,6 +263,7 @@ class MainActivity : AppCompatActivity() {
         binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.GONE
         binding.fragmentContainer.visibility = View.VISIBLE
+        // Fragment'i tekrar tekrar yaratmamak için tag kontrolü.
         if (supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list)) == null) {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainer, SubscriptionListFragment::class.java, null, getString(R.string.fragment_tag_subscription_list))

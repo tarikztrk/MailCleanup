@@ -8,6 +8,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Core katmanındaki soyutlamaların Hilt bağları.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class CoreModule {

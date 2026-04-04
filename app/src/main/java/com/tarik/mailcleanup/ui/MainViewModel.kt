@@ -37,6 +37,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Sign-in buton durumunu ayrı temsil eder.
+ */
 sealed interface SignInUiStatus {
     data object Idle : SignInUiStatus
     data object InProgress : SignInUiStatus
@@ -44,6 +47,9 @@ sealed interface SignInUiStatus {
     data class Error(val message: String) : SignInUiStatus
 }
 
+/**
+ * Abonelik tarama/yükleme durumunu temsil eder.
+ */
 sealed interface ScanUiStatus {
     data object Idle : ScanUiStatus
     data object InProgress : ScanUiStatus
@@ -51,6 +57,10 @@ sealed interface ScanUiStatus {
     data class Error(val message: String) : ScanUiStatus
 }
 
+/**
+ * Ekranın tek durum kaynağı.
+ * Fragment/Activity sadece bu modeli render eder.
+ */
 data class MainUiState(
     val signInStatus: SignInUiStatus = SignInUiStatus.Idle,
     val scanStatus: ScanUiStatus = ScanUiStatus.Idle,
@@ -64,6 +74,9 @@ data class MainUiState(
     val isSelectionMode: Boolean get() = selectedItems.isNotEmpty()
 }
 
+/**
+ * Tek-seferlik UI aksiyonları (Snackbar, URL açma vb.).
+ */
 sealed interface MainUiEvent {
     data class ShowUndo(val message: String) : MainUiEvent
     data class ShowError(val message: String) : MainUiEvent
@@ -80,9 +93,11 @@ class MainViewModel @Inject constructor(
     private val keepSubscriptionUseCase: KeepSubscriptionUseCase
 ) : ViewModel() {
 
+    // Ekranın ana state kaynağı.
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
 
+    // Tek seferlik event'ler state yerine channel üstünden iletilir.
     private val _uiEvent = Channel<MainUiEvent>(capacity = Channel.BUFFERED)
     val uiEvent = _uiEvent.receiveAsFlow()
 
@@ -112,6 +127,7 @@ class MainViewModel @Inject constructor(
             .cachedIn(viewModelScope),
         filterFlow
     ) { pagingData, filterState ->
+        // Paging stream üstünde client-side arama + gizleme filtresi uygulanır.
         val searchQuery = filterState.first
         val hiddenEmails = filterState.second
         pagingData.filter { subscription ->
@@ -154,6 +170,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun startSubscriptionScan(account: MailAccount) {
+        // Hesap değiştiğinde ekran state'i temizlenir ve yeni paging kaynağı tetiklenir.
         _uiState.update {
             it.copy(
                 scanStatus = ScanUiStatus.InProgress,
@@ -170,6 +187,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun unsubscribeAndClean(account: MailAccount, subscription: Subscription, cleanEmails: Boolean) {
+        // Undo için aksiyonu önce UI'dan gizleyip işi gecikmeli başlatıyoruz.
         finalizePendingAction()
 
         lastRemovedSubscription = subscription
@@ -197,6 +215,7 @@ class MainViewModel @Inject constructor(
                     }
                 }
                 is DomainResult.Error -> {
+                    // İşlem başarısızsa UI gizlemesini geri al.
                     undoLastAction(informUser = false)
                     emitEvent(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
                 }
@@ -209,6 +228,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun keepSubscription(subscription: Subscription) {
+        // Keep akışı da undo davranışıyla aynı şablonu kullanır.
         finalizePendingAction()
 
         lastRemovedSubscription = subscription
@@ -249,6 +269,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun finalizePendingAction() {
+        // Snackbar süresi dolduğunda bekleyen işi gerçekten çalıştırır.
         pendingJob?.start()
         pendingJob = null
         lastRemovedSubscription = null

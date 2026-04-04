@@ -17,6 +17,10 @@ import java.net.UnknownHostException
 import java.util.Calendar
 import javax.inject.Inject
 
+/**
+ * Domain repository kontratının data katmanındaki ana implementasyonu.
+ * Remote (Gmail) ve local (Room) kaynakları birleştirir.
+ */
 class EmailRepository @Inject constructor(
     private val remoteDataSource: GmailRemoteDataSource,
     private val localDataSource: ProcessedSubscriptionLocalDataSource
@@ -75,6 +79,7 @@ class EmailRepository @Inject constructor(
         throwable: Throwable,
         fallback: DomainError = DomainError.Generic
     ): DomainError {
+        // Farklı kaynaklardan gelen teknik hataları UI'nın anlayacağı ortak tipe dönüştürür.
         val message = throwable.message?.lowercase().orEmpty()
 
         if (
