@@ -17,9 +17,6 @@ import com.tarik.mailcleanup.data.ProcessedSubscription
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +25,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.Properties
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.regex.Pattern
 import javax.inject.Inject
 import javax.mail.Session
@@ -44,77 +42,81 @@ class GmailRemoteDataSource @Inject constructor(
         endDate: Calendar,
         processedByEmail: Map<String, ProcessedSubscription>
     ): List<Subscription> = withContext(Dispatchers.IO) {
-        coroutineScope {
-            val gmail = buildGmail(account)
+        val gmail = buildGmail(account)
 
-            val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.US)
-            val query = "category:promotions after:${dateFormat.format(startDate.time)} before:${dateFormat.format(endDate.time)}"
-            Log.d("GmailRemoteDataSource", "Sorgu başlatılıyor: $query")
+        val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.US)
+        val query = "category:promotions after:${dateFormat.format(startDate.time)} before:${dateFormat.format(endDate.time)}"
+        Log.d("GmailRemoteDataSource", "Sorgu başlatılıyor: $query")
 
-            val messageIdResponse = gmail.users().messages().list("me")
-                .setQ(query)
-                .setMaxResults(500)
-                .execute()
+        val messageIdResponse = gmail.users().messages().list("me")
+            .setQ(query)
+            .setMaxResults(500)
+            .execute()
 
-            val messageIds = messageIdResponse.messages ?: return@coroutineScope emptyList()
-            val subscriptionsMap = mutableMapOf<String, Subscription>()
+        val messageIds = messageIdResponse.messages ?: return@withContext emptyList()
+        val subscriptionsMap = mutableMapOf<String, Subscription>()
 
-            val chunks = messageIds.chunked(10)
-            chunks.mapIndexed { chunkIndex, chunk ->
-                async {
-                    var retryCount = 0
-                    val maxRetries = 3
-                    while (retryCount <= maxRetries) {
-                        try {
-                            val batch = gmail.batch()
-                            val callback = object : JsonBatchCallback<Message>() {
-                                override fun onSuccess(message: Message, responseHeaders: HttpHeaders) {
-                                    if (message.payload.headers.any { it.name.equals("List-Unsubscribe", ignoreCase = true) }) {
-                                        val fromHeader = message.payload.headers.find { it.name.equals("From", ignoreCase = true) }?.value ?: return
-                                        val (name, email) = parseSender(fromHeader)
-                                        val processedEntry = processedByEmail[email]
-                                        val emailDate = message.internalDate ?: 0L
-                                        if (processedEntry == null || emailDate > processedEntry.processedAt) {
-                                            synchronized(subscriptionsMap) {
-                                                val subscription = subscriptionsMap.getOrPut(email) {
-                                                    Subscription(senderName = name, senderEmail = email)
-                                                }
-                                                subscription.messageIds.add(message.id)
+        val chunks = messageIds.chunked(20)
+        val maxRetries = 4
+
+        chunks.forEachIndexed { chunkIndex, chunk ->
+            var pendingIds = chunk.map { it.id }
+            var retryCount = 0
+
+            while (pendingIds.isNotEmpty() && retryCount <= maxRetries) {
+                val failedIds = ConcurrentLinkedQueue<String>()
+                try {
+                    val batch = gmail.batch()
+
+                    pendingIds.forEach { messageId ->
+                        val callback = object : JsonBatchCallback<Message>() {
+                            override fun onSuccess(message: Message, responseHeaders: HttpHeaders) {
+                                if (message.payload.headers.any { it.name.equals("List-Unsubscribe", ignoreCase = true) }) {
+                                    val fromHeader = message.payload.headers.find { it.name.equals("From", ignoreCase = true) }?.value ?: return
+                                    val (name, email) = parseSender(fromHeader)
+                                    val processedEntry = processedByEmail[email]
+                                    val emailDate = message.internalDate ?: 0L
+                                    if (processedEntry == null || emailDate > processedEntry.processedAt) {
+                                        synchronized(subscriptionsMap) {
+                                            val subscription = subscriptionsMap.getOrPut(email) {
+                                                Subscription(senderName = name, senderEmail = email)
                                             }
+                                            subscription.messageIds.add(message.id)
                                         }
                                     }
                                 }
-
-                                override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
-                                    Log.e("GmailRemoteDataSource", "Batch fetch onFailure: ${e.message}")
-                                }
                             }
 
-                            for (msg in chunk) {
-                                gmail.users().messages().get("me", msg.id).setFormat("metadata")
-                                    .setFields("id,internalDate,payload/headers")
-                                    .queue(batch, callback)
-                            }
-
-                            batch.execute()
-                            break
-                        } catch (e: Exception) {
-                            retryCount++
-                            val isRateLimit = e.message?.contains("Too many concurrent requests") == true ||
-                                e.message?.contains("Rate limit") == true
-                            if (isRateLimit && retryCount <= maxRetries) {
-                                delay(1000L * retryCount)
-                            } else {
-                                break
+                            override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
+                                failedIds.add(messageId)
+                                Log.e("GmailRemoteDataSource", "Batch fetch onFailure: ${e.message}")
                             }
                         }
-                    }
-                    if (chunkIndex < chunks.size - 1) delay(300L)
-                }
-            }.awaitAll()
 
-            subscriptionsMap.values.map { it.copy(emailCount = it.messageIds.size) }
+                        gmail.users().messages().get("me", messageId).setFormat("metadata")
+                            .setFields("id,internalDate,payload/headers")
+                            .queue(batch, callback)
+                    }
+
+                    batch.execute()
+                } catch (e: Exception) {
+                    Log.e("GmailRemoteDataSource", "Batch execute error: ${e.message}", e)
+                    pendingIds.forEach { failedIds.add(it) }
+                }
+
+                val nextPending = failedIds.toList().distinct()
+                if (nextPending.isEmpty()) break
+
+                pendingIds = nextPending
+                retryCount++
+                if (retryCount <= maxRetries) {
+                    val backoff = 400L * (1L shl retryCount.coerceAtMost(5))
+                    delay(backoff + (chunkIndex % 5) * 120L)
+                }
+            }
         }
+
+        subscriptionsMap.values.map { it.copy(emailCount = it.messageIds.size) }
     }
 
     suspend fun unsubscribeAndClean(
