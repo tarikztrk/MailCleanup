@@ -14,6 +14,8 @@ import com.google.api.client.util.Base64
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import com.google.api.services.gmail.model.Message
+import com.tarik.mailcleanup.domain.model.DomainError
+import com.tarik.mailcleanup.domain.model.DomainResult
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.domain.repository.SubscriptionRepository
@@ -44,7 +46,7 @@ class EmailRepository @Inject constructor(
         account: GoogleSignInAccount, 
         startDate: Calendar, 
         endDate: Calendar
-    ): List<Subscription> {
+    ): DomainResult<List<Subscription>> {
         return withContext(Dispatchers.IO) {
             try {
                 val credential = GoogleAccountCredential.usingOAuth2(context, listOf(GmailScopes.GMAIL_MODIFY))
@@ -68,7 +70,7 @@ class EmailRepository @Inject constructor(
                     .setMaxResults(500)
                     .execute()
 
-                val messageIds = messageIdResponse.messages ?: return@withContext emptyList()
+                val messageIds = messageIdResponse.messages ?: return@withContext DomainResult.Success(emptyList())
                 Log.d("EmailRepository", "Potansiyel aday ${messageIds.size} e-posta bulundu.")
 
                 val subscriptionsMap = mutableMapOf<String, Subscription>()
@@ -152,14 +154,14 @@ class EmailRepository @Inject constructor(
                     it.copy(emailCount = it.messageIds.size)
                 }
 
-                resultList // Bu listeyi döndür
+                DomainResult.Success(resultList)
             } catch (e: Exception) {
                 if (e is com.google.api.client.http.HttpResponseException) {
                     Log.e("EmailRepository", "HTTP Hatası: ${e.statusCode} - ${e.content}", e)
                 } else {
                     Log.e("EmailRepository", "Abonelikler alınırken genel hata", e)
                 }
-                emptyList()
+                DomainResult.Error(DomainError.Generic)
             }
         }
     }
@@ -168,10 +170,11 @@ class EmailRepository @Inject constructor(
         account: GoogleSignInAccount,
         subscription: Subscription,
         cleanEmails: Boolean
-    ): UnsubscribeAction {
+    ): DomainResult<UnsubscribeAction> {
         return withContext(Dispatchers.IO) {
             try {
-                val messageId = subscription.messageIds.firstOrNull() ?: return@withContext UnsubscribeAction.NotFound
+                val messageId = subscription.messageIds.firstOrNull()
+                    ?: return@withContext DomainResult.Error(DomainError.NoUnsubscribeMethod)
 
                 val credential = GoogleAccountCredential.usingOAuth2(context, listOf(GmailScopes.GMAIL_MODIFY))
                     .setSelectedAccount(account.account)
@@ -180,9 +183,12 @@ class EmailRepository @Inject constructor(
 
                 val message = gmail.users().messages().get("me", messageId).setFormat("metadata").execute()
                 val unsubscribeHeader = message.payload.headers.find { it.name.equals("List-Unsubscribe", ignoreCase = true) }?.value
-                    ?: return@withContext UnsubscribeAction.NotFound
+                    ?: return@withContext DomainResult.Error(DomainError.NoUnsubscribeMethod)
 
                 val action = parseUnsubscribeHeader(unsubscribeHeader)
+                if (action is UnsubscribeAction.NotFound) {
+                    return@withContext DomainResult.Error(DomainError.NoUnsubscribeMethod)
+                }
 
                 if (action is UnsubscribeAction.MailTo) {
                     sendUnsubscribeEmail(gmail, account.email!!, action.recipient, action.subject)
@@ -201,15 +207,15 @@ class EmailRepository @Inject constructor(
                 processedDao.insert(record)
                 Log.d("EmailRepository", "${subscription.senderEmail} veritabanına 'UNSUBSCRIBED' olarak eklendi.")
 
-                action
+                DomainResult.Success(action)
             } catch (e: Exception) {
                 Log.e("EmailRepository", "Abonelikten çıkma hatası", e)
-                UnsubscribeAction.NotFound
+                DomainResult.Error(DomainError.Generic)
             }
         }
     }
 
-    override suspend fun keepSubscription(subscription: Subscription): Boolean {
+    override suspend fun keepSubscription(subscription: Subscription): DomainResult<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 val record = ProcessedSubscription(
@@ -219,10 +225,10 @@ class EmailRepository @Inject constructor(
                 )
                 processedDao.insert(record)
                 Log.d("EmailRepository", "${subscription.senderEmail} veritabanına 'WHITELISTED' olarak eklendi.")
-                true
+                DomainResult.Success(Unit)
             } catch (e: Exception) {
                 Log.e("EmailRepository", "Abonelik koruma hatası", e)
-                false
+                DomainResult.Error(DomainError.KeepFailed)
             }
         }
     }

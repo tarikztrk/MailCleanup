@@ -1,11 +1,13 @@
 package com.tarik.mailcleanup.ui
 
-import android.app.Application
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tarik.mailcleanup.core.text.StringProvider
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.tarik.mailcleanup.R
+import com.tarik.mailcleanup.domain.model.DomainError
+import com.tarik.mailcleanup.domain.model.DomainResult
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
@@ -60,11 +62,11 @@ sealed interface MainUiEvent {
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    application: Application,
+    private val stringProvider: StringProvider,
     private val getSubscriptionsUseCase: GetSubscriptionsUseCase,
     private val unsubscribeAndCleanUseCase: UnsubscribeAndCleanUseCase,
     private val keepSubscriptionUseCase: KeepSubscriptionUseCase
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
@@ -94,7 +96,7 @@ class MainViewModel @Inject constructor(
     fun onSignInFailed(errorMessage: String?) {
         _uiState.update {
             it.copy(
-                signInStatus = SignInUiStatus.Error(errorMessage ?: getApplication<Application>().getString(R.string.error_generic)),
+                signInStatus = SignInUiStatus.Error(errorMessage ?: stringProvider.get(R.string.error_generic)),
                 scanStatus = ScanUiStatus.Idle
             )
         }
@@ -116,26 +118,28 @@ class MainViewModel @Inject constructor(
         lastEndDate = null
 
         viewModelScope.launch {
-            try {
-                val (startDate, endDate) = getNextDateRange()
-                val subscriptions = getSubscriptionsUseCase(account, startDate, endDate).sortedByDescending { it.emailCount }
-                lastEndDate = startDate
-
-                _uiState.update {
-                    it.copy(
-                        scanStatus = ScanUiStatus.Success,
-                        subscriptions = subscriptions,
-                        filteredSubscriptions = subscriptions
-                    )
+            val (startDate, endDate) = getNextDateRange()
+            when (val result = getSubscriptionsUseCase(account, startDate, endDate)) {
+                is DomainResult.Success -> {
+                    val subscriptions = result.data.sortedByDescending { it.emailCount }
+                    lastEndDate = startDate
+                    _uiState.update {
+                        it.copy(
+                            scanStatus = ScanUiStatus.Success,
+                            subscriptions = subscriptions,
+                            filteredSubscriptions = subscriptions
+                        )
+                    }
                 }
-            } catch (e: Exception) {
-                Log.e("MainViewModel", "Abonelik tarama hatası", e)
-                _uiState.update {
-                    it.copy(
-                        scanStatus = ScanUiStatus.Error(getApplication<Application>().getString(R.string.error_generic)),
-                        subscriptions = emptyList(),
-                        filteredSubscriptions = emptyList()
-                    )
+                is DomainResult.Error -> {
+                    Log.e("MainViewModel", "Abonelik tarama hatası: ${result.error}")
+                    _uiState.update {
+                        it.copy(
+                            scanStatus = ScanUiStatus.Error(domainErrorToMessage(result.error)),
+                            subscriptions = emptyList(),
+                            filteredSubscriptions = emptyList()
+                        )
+                    }
                 }
             }
         }
@@ -153,34 +157,42 @@ class MainViewModel @Inject constructor(
 
                 if (startDate.before(oneYearAgo)) {
                     _uiState.update { it.copy(isLoadingMore = false, isLastPage = true) }
-                    _uiEvent.emit(MainUiEvent.ShowMessage(getApplication<Application>().getString(R.string.snackbar_all_loaded)))
+                    _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_all_loaded)))
                     return@launch
                 }
 
-                val newSubscriptions = getSubscriptionsUseCase(account, startDate, endDate)
-                if (newSubscriptions.isNotEmpty()) {
-                    val existing = _uiState.value.subscriptions
-                    val existingEmails = existing.map { it.senderEmail }.toSet()
-                    val merged = (existing + newSubscriptions.filterNot { existingEmails.contains(it.senderEmail) })
-                        .sortedByDescending { it.emailCount }
+                when (val result = getSubscriptionsUseCase(account, startDate, endDate)) {
+                    is DomainResult.Success -> {
+                        val newSubscriptions = result.data
+                        if (newSubscriptions.isNotEmpty()) {
+                            val existing = _uiState.value.subscriptions
+                            val existingEmails = existing.map { it.senderEmail }.toSet()
+                            val merged = (existing + newSubscriptions.filterNot { existingEmails.contains(it.senderEmail) })
+                                .sortedByDescending { it.emailCount }
 
-                    lastEndDate = startDate
-                    _uiState.update {
-                        it.copy(
-                            isLoadingMore = false,
-                            subscriptions = merged,
-                            selectedItems = it.selectedItems.filter { s -> merged.any { item -> item.senderEmail == s.senderEmail } }.toSet()
-                        )
+                            lastEndDate = startDate
+                            _uiState.update {
+                                it.copy(
+                                    isLoadingMore = false,
+                                    subscriptions = merged,
+                                    selectedItems = it.selectedItems.filter { s -> merged.any { item -> item.senderEmail == s.senderEmail } }.toSet()
+                                )
+                            }
+                            applyFilter()
+                        } else {
+                            _uiState.update { it.copy(isLoadingMore = false, isLastPage = true) }
+                            _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_all_loaded)))
+                        }
                     }
-                    applyFilter()
-                } else {
-                    _uiState.update { it.copy(isLoadingMore = false, isLastPage = true) }
-                    _uiEvent.emit(MainUiEvent.ShowMessage(getApplication<Application>().getString(R.string.snackbar_all_loaded)))
+                    is DomainResult.Error -> {
+                        _uiState.update { it.copy(isLoadingMore = false) }
+                        _uiEvent.emit(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "load more error", e)
                 _uiState.update { it.copy(isLoadingMore = false) }
-                _uiEvent.emit(MainUiEvent.ShowError(getApplication<Application>().getString(R.string.error_generic)))
+                _uiEvent.emit(MainUiEvent.ShowError(stringProvider.get(R.string.error_generic)))
             }
         }
     }
@@ -204,27 +216,31 @@ class MainViewModel @Inject constructor(
 
         pendingJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
             _uiState.update { it.copy(processingEmail = subscription.senderEmail) }
-            val action = unsubscribeAndCleanUseCase(account, subscription, cleanEmails)
+            val result = unsubscribeAndCleanUseCase(account, subscription, cleanEmails)
             _uiState.update { it.copy(processingEmail = null) }
 
-            if (action is UnsubscribeAction.NotFound) {
-                undoLastAction(informUser = false)
-                _uiEvent.emit(MainUiEvent.ShowError(getApplication<Application>().getString(R.string.error_no_unsubscribe_method)))
-            } else {
-                val message = if (action is UnsubscribeAction.MailTo) {
-                    getApplication<Application>().getString(R.string.snackbar_unsubscribed_mailto, subscription.senderEmail)
-                } else {
-                    getApplication<Application>().getString(R.string.snackbar_unsubscribed_success)
+            when (result) {
+                is DomainResult.Success -> {
+                    val action = result.data
+                    val message = if (action is UnsubscribeAction.MailTo) {
+                        stringProvider.get(R.string.snackbar_unsubscribed_mailto, subscription.senderEmail)
+                    } else {
+                        stringProvider.get(R.string.snackbar_unsubscribed_success)
+                    }
+                    _uiEvent.emit(MainUiEvent.ShowUndo(message))
+                    if (action is UnsubscribeAction.Http) {
+                        _uiEvent.emit(MainUiEvent.OpenUrl(action.url))
+                    }
                 }
-                _uiEvent.emit(MainUiEvent.ShowUndo(message))
-                if (action is UnsubscribeAction.Http) {
-                    _uiEvent.emit(MainUiEvent.OpenUrl(action.url))
+                is DomainResult.Error -> {
+                    undoLastAction(informUser = false)
+                    _uiEvent.emit(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
                 }
             }
         }
 
         viewModelScope.launch {
-            _uiEvent.emit(MainUiEvent.ShowUndo(getApplication<Application>().getString(R.string.snackbar_unsubscribed_success)))
+            _uiEvent.emit(MainUiEvent.ShowUndo(stringProvider.get(R.string.snackbar_unsubscribed_success)))
         }
     }
 
@@ -245,15 +261,17 @@ class MainViewModel @Inject constructor(
         applyFilter()
 
         pendingJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
-            val success = keepSubscriptionUseCase(subscription)
-            if (!success) {
-                undoLastAction(informUser = false)
-                _uiEvent.emit(MainUiEvent.ShowError("'${subscription.senderEmail}' için hata: ${getApplication<Application>().getString(R.string.error_keep_failed)}"))
+            when (val result = keepSubscriptionUseCase(subscription)) {
+                is DomainResult.Success -> Unit
+                is DomainResult.Error -> {
+                    undoLastAction(informUser = false)
+                    _uiEvent.emit(MainUiEvent.ShowError("'${subscription.senderEmail}' için hata: ${domainErrorToMessage(result.error)}"))
+                }
             }
         }
 
         viewModelScope.launch {
-            _uiEvent.emit(MainUiEvent.ShowUndo(getApplication<Application>().getString(R.string.snackbar_kept, subscription.senderEmail)))
+            _uiEvent.emit(MainUiEvent.ShowUndo(stringProvider.get(R.string.snackbar_kept, subscription.senderEmail)))
         }
     }
 
@@ -274,7 +292,7 @@ class MainViewModel @Inject constructor(
         lastRemovedSubscriptionIndex = -1
 
         if (informUser) {
-            viewModelScope.launch { _uiEvent.emit(MainUiEvent.ShowMessage(getApplication<Application>().getString(R.string.snackbar_undo))) }
+            viewModelScope.launch { _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_undo))) }
         }
     }
 
@@ -316,8 +334,10 @@ class MainViewModel @Inject constructor(
             _uiState.update { it.copy(subscriptions = updated, selectedItems = emptySet()) }
             applyFilter()
 
-            itemsToKeep.forEach { if (keepSubscriptionUseCase(it)) successCount++ }
-            _uiEvent.emit(MainUiEvent.ShowMessage(getApplication<Application>().getString(R.string.bulk_action_result_kept, successCount)))
+            itemsToKeep.forEach {
+                if (keepSubscriptionUseCase(it) is DomainResult.Success) successCount++
+            }
+            _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.bulk_action_result_kept, successCount)))
         }
     }
 
@@ -334,10 +354,9 @@ class MainViewModel @Inject constructor(
             applyFilter()
 
             itemsToUnsubscribe.forEach {
-                val action = unsubscribeAndCleanUseCase(account, it, cleanEmails)
-                if (action !is UnsubscribeAction.NotFound) successCount++
+                if (unsubscribeAndCleanUseCase(account, it, cleanEmails) is DomainResult.Success) successCount++
             }
-            _uiEvent.emit(MainUiEvent.ShowMessage(getApplication<Application>().getString(R.string.bulk_action_result_unsubscribed, successCount)))
+            _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.bulk_action_result_unsubscribed, successCount)))
         }
     }
 
@@ -369,5 +388,13 @@ class MainViewModel @Inject constructor(
         val startDate = endDate.clone() as Calendar
         startDate.add(Calendar.DAY_OF_YEAR, -30)
         return Pair(startDate, endDate)
+    }
+
+    private fun domainErrorToMessage(error: DomainError): String {
+        return when (error) {
+            DomainError.Generic -> stringProvider.get(R.string.error_generic)
+            DomainError.NoUnsubscribeMethod -> stringProvider.get(R.string.error_no_unsubscribe_method)
+            DomainError.KeepFailed -> stringProvider.get(R.string.error_keep_failed)
+        }
     }
 }

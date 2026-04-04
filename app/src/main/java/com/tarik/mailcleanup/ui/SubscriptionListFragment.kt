@@ -48,6 +48,7 @@ class SubscriptionListFragment : Fragment() {
     // --- YENİ: Listenin sonuna gelinip gelinmediğini takip edecek bayrak ---
     private var isLastPage = false
     private var hasShownAllLoadedMessage = false
+    private var lastRenderedList: List<Subscription> = emptyList()
     private var actionMode: ActionMode? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -210,7 +211,10 @@ class SubscriptionListFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.uiState.collect { state ->
-                        subscriptionAdapter.submitList(state.filteredSubscriptions)
+                        if (state.filteredSubscriptions != lastRenderedList) {
+                            lastRenderedList = state.filteredSubscriptions
+                            subscriptionAdapter.submitList(state.filteredSubscriptions)
+                        }
                         subscriptionAdapter.setProcessingState(state.processingEmail)
                         checkEmptyState(state.filteredSubscriptions)
 
@@ -303,6 +307,7 @@ class SubscriptionListFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        lastRenderedList = emptyList()
         _binding = null
     }
 }
