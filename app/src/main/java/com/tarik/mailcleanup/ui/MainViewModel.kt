@@ -23,16 +23,16 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -83,8 +83,8 @@ class MainViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
 
-    private val _uiEvent = MutableSharedFlow<MainUiEvent>()
-    val uiEvent = _uiEvent.asSharedFlow()
+    private val _uiEvent = Channel<MainUiEvent>(capacity = Channel.BUFFERED)
+    val uiEvent = _uiEvent.receiveAsFlow()
 
     private val accountFlow = uiState
         .map { it.currentAccount }
@@ -189,25 +189,22 @@ class MainViewModel @Inject constructor(
             when (result) {
                 is DomainResult.Success -> {
                     val action = result.data
-                    val message = if (action is UnsubscribeAction.MailTo) {
-                        stringProvider.get(R.string.snackbar_unsubscribed_mailto, subscription.senderEmail)
-                    } else {
-                        stringProvider.get(R.string.snackbar_unsubscribed_success)
+                    if (action is UnsubscribeAction.MailTo) {
+                        emitEvent(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_unsubscribed_mailto, subscription.senderEmail)))
                     }
-                    _uiEvent.emit(MainUiEvent.ShowUndo(message))
                     if (action is UnsubscribeAction.Http) {
-                        _uiEvent.emit(MainUiEvent.OpenUrl(action.url))
+                        emitEvent(MainUiEvent.OpenUrl(action.url))
                     }
                 }
                 is DomainResult.Error -> {
                     undoLastAction(informUser = false)
-                    _uiEvent.emit(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
+                    emitEvent(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
                 }
             }
         }
 
         viewModelScope.launch {
-            _uiEvent.emit(MainUiEvent.ShowUndo(stringProvider.get(R.string.snackbar_unsubscribed_success)))
+            emitEvent(MainUiEvent.ShowUndo(stringProvider.get(R.string.snackbar_unsubscribed_success)))
         }
     }
 
@@ -227,13 +224,13 @@ class MainViewModel @Inject constructor(
                 is DomainResult.Success -> Unit
                 is DomainResult.Error -> {
                     undoLastAction(informUser = false)
-                    _uiEvent.emit(MainUiEvent.ShowError("'${subscription.senderEmail}' icin hata: ${domainErrorToMessage(result.error)}"))
+                    emitEvent(MainUiEvent.ShowError("'${subscription.senderEmail}' icin hata: ${domainErrorToMessage(result.error)}"))
                 }
             }
         }
 
         viewModelScope.launch {
-            _uiEvent.emit(MainUiEvent.ShowUndo(stringProvider.get(R.string.snackbar_kept, subscription.senderEmail)))
+            emitEvent(MainUiEvent.ShowUndo(stringProvider.get(R.string.snackbar_kept, subscription.senderEmail)))
         }
     }
 
@@ -247,7 +244,7 @@ class MainViewModel @Inject constructor(
         lastRemovedSubscription = null
 
         if (informUser) {
-            viewModelScope.launch { _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_undo))) }
+            viewModelScope.launch { emitEvent(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_undo))) }
         }
     }
 
@@ -293,7 +290,7 @@ class MainViewModel @Inject constructor(
             itemsToKeep.forEach {
                 if (keepSubscriptionUseCase(it) is DomainResult.Success) successCount++
             }
-            _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.bulk_action_result_kept, successCount)))
+            emitEvent(MainUiEvent.ShowMessage(stringProvider.get(R.string.bulk_action_result_kept, successCount)))
         }
     }
 
@@ -314,7 +311,7 @@ class MainViewModel @Inject constructor(
             itemsToUnsubscribe.forEach {
                 if (unsubscribeAndCleanUseCase(account, it, cleanEmails) is DomainResult.Success) successCount++
             }
-            _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.bulk_action_result_unsubscribed, successCount)))
+            emitEvent(MainUiEvent.ShowMessage(stringProvider.get(R.string.bulk_action_result_unsubscribed, successCount)))
         }
     }
 
@@ -335,5 +332,9 @@ class MainViewModel @Inject constructor(
             DomainError.NoUnsubscribeMethod -> stringProvider.get(R.string.error_no_unsubscribe_method)
             DomainError.KeepFailed -> stringProvider.get(R.string.error_keep_failed)
         }
+    }
+
+    private suspend fun emitEvent(event: MainUiEvent) {
+        _uiEvent.send(event)
     }
 }
