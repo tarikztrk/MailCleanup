@@ -22,7 +22,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.paging.LoadState
-import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
@@ -30,7 +29,6 @@ import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
 import com.tarik.mailcleanup.domain.model.DomainError
 import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
-import com.tarik.mailcleanup.ui.mapper.toMailAccountOrNull
 import com.tarik.mailcleanup.ui.paging.DomainPagingException
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
@@ -57,7 +55,7 @@ class SubscriptionListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        currentAccount = GoogleSignIn.getLastSignedInAccount(requireContext())?.toMailAccountOrNull()
+        currentAccount = viewModel.currentMailAccount()
         setupRecyclerView()
         setupMenu()
         observeViewModel()
@@ -234,6 +232,7 @@ class SubscriptionListFragment : Fragment() {
 
                 launch {
                     viewModel.uiState.collect { state ->
+                        currentAccount = viewModel.currentMailAccount()
                         subscriptionAdapter.setProcessingState(state.processingEmail)
                         val currentSelectedEmails = state.selectedItems.map { it.senderEmail }.toSet()
                         if (currentSelectedEmails != lastSelectedEmails) {

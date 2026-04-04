@@ -1,26 +1,32 @@
 package com.tarik.mailcleanup.ui
 
+import android.accounts.Account
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.AuthorizationResult
+import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.gmail.GmailScopes
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.ActivityMainBinding
-import com.tarik.mailcleanup.ui.mapper.toMailAccountOrNull
+import com.tarik.mailcleanup.domain.model.MailAccount
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -29,25 +35,38 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
-    private lateinit var googleSignInClient: GoogleSignInClient
 
-    private val googleSignInLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
+    private lateinit var credentialManager: CredentialManager
+    private val authorizationClient by lazy { Identity.getAuthorizationClient(this) }
+
+    private var pendingMailAccount: MailAccount? = null
+
+    private val authorizationResolutionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        val pendingAccount = pendingMailAccount
+        pendingMailAccount = null
+
+        if (result.resultCode != RESULT_OK || pendingAccount == null) {
+            viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
+            return@registerForActivityResult
+        }
+
+        val intent = result.data
+        if (intent == null) {
+            viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
+            return@registerForActivityResult
+        }
+
         try {
-            val account = task.getResult(ApiException::class.java)
-            if (account != null) {
-                handleSignInSuccess(account)
+            val authorizationResult = authorizationClient.getAuthorizationResultFromIntent(intent)
+            if (hasGmailModifyScope(authorizationResult)) {
+                handleSignInSuccess(pendingAccount)
             } else {
-                viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
+                viewModel.onSignInFailed(getString(R.string.error_auth))
             }
         } catch (e: ApiException) {
-            if (e.statusCode == CommonStatusCodes.CANCELED) {
-                viewModel.onSignInFailed(getString(R.string.error_sign_in_cancelled))
-            } else {
-                viewModel.onSignInFailed(getString(R.string.error_sign_in_failed, e.statusCode.toString()))
-            }
+            viewModel.onSignInFailed(getString(R.string.error_sign_in_failed, e.statusCode.toString()))
         }
     }
 
@@ -56,34 +75,24 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // YENİ: Toolbar'ı ayarla
         setSupportActionBar(binding.toolbar)
 
-        configureGoogleSignIn()
+        credentialManager = CredentialManager.create(this)
         setupClickListeners()
         observeViewModel()
     }
 
     override fun onStart() {
         super.onStart()
-        val account = GoogleSignIn.getLastSignedInAccount(this)
-        if (account != null && GoogleSignIn.hasPermissions(account, Scope(GmailScopes.GMAIL_MODIFY))) {
-            handleSignInSuccess(account)
+        val cached = loadCachedMailAccount()
+        if (cached != null) {
+            viewModel.onSignInSuccess()
+            viewModel.startSubscriptionScan(cached)
+            requestGmailAuthorization(cached, silentOnly = true)
         } else {
             viewModel.resetToIdleState()
         }
     }
-
-    private fun configureGoogleSignIn() {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            // İZNİ GMAIL_MODIFY OLARAK GÜNCELLİYORUZ
-            // Bu, okuma, oluşturma ve gönderme yetkisi verir.
-            .requestScopes(Scope(GmailScopes.GMAIL_MODIFY))
-            .requestEmail()
-            .build()
-        googleSignInClient = GoogleSignIn.getClient(this, gso)
-    }
-
 
     private fun setupClickListeners() {
         binding.signInButton.setOnClickListener {
@@ -99,18 +108,89 @@ class MainActivity : AppCompatActivity() {
 
     private fun signIn() {
         viewModel.onSignInStarted()
-        val signInIntent: Intent = googleSignInClient.signInIntent
-        googleSignInLauncher.launch(signInIntent)
+        lifecycleScope.launch {
+            runCatching {
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(
+                        GetGoogleIdOption.Builder()
+                            .setServerClientId(getString(R.string.google_server_client_id))
+                            .setFilterByAuthorizedAccounts(false)
+                            .setAutoSelectEnabled(false)
+                            .build()
+                    )
+                    .build()
+
+                credentialManager.getCredential(this@MainActivity, request)
+            }.onSuccess { response ->
+                val credential = response.credential
+                if (credential is CustomCredential &&
+                    credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                ) {
+                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                    val accountName = googleIdTokenCredential.id
+                    val email = googleIdTokenCredential.id
+                    val mailAccount = MailAccount(accountName = accountName, email = email)
+                    requestGmailAuthorization(mailAccount, silentOnly = false)
+                } else {
+                    viewModel.onSignInFailed(getString(R.string.error_sign_in_failed, "unsupported_credential"))
+                }
+            }.onFailure { throwable ->
+                val message = if (throwable is GetCredentialException) {
+                    throwable.message ?: getString(R.string.error_sign_in_cancelled)
+                } else {
+                    getString(R.string.error_sign_in_failed, "credential_error")
+                }
+                viewModel.onSignInFailed(message)
+            }
+        }
     }
 
-    private fun handleSignInSuccess(account: GoogleSignInAccount) {
-        val mailAccount = account.toMailAccountOrNull()
-        if (mailAccount == null) {
-            viewModel.onSignInFailed(getString(R.string.error_auth))
-            return
+    private fun requestGmailAuthorization(account: MailAccount, silentOnly: Boolean) {
+        val request = AuthorizationRequest.Builder()
+            .setRequestedScopes(listOf(Scope(GmailScopes.GMAIL_MODIFY)))
+            .setAccount(Account(account.accountName, "com.google"))
+            .build()
+
+        authorizationClient.authorize(request)
+            .addOnSuccessListener { result ->
+                handleAuthorizationResult(account, result, silentOnly)
+            }
+            .addOnFailureListener {
+                if (!silentOnly) {
+                    viewModel.onSignInFailed(getString(R.string.error_auth))
+                }
+            }
+    }
+
+    private fun handleAuthorizationResult(
+        account: MailAccount,
+        result: AuthorizationResult,
+        silentOnly: Boolean
+    ) {
+        when {
+            result.hasResolution() && !silentOnly -> {
+                pendingMailAccount = account
+                val pendingIntent = result.pendingIntent
+                if (pendingIntent == null) {
+                    viewModel.onSignInFailed(getString(R.string.error_auth))
+                    return
+                }
+                val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                authorizationResolutionLauncher.launch(request)
+            }
+            hasGmailModifyScope(result) -> {
+                handleSignInSuccess(account)
+            }
+            !silentOnly -> {
+                viewModel.onSignInFailed(getString(R.string.error_auth))
+            }
         }
+    }
+
+    private fun handleSignInSuccess(account: MailAccount) {
+        cacheMailAccount(account)
         viewModel.onSignInSuccess()
-        viewModel.startSubscriptionScan(mailAccount)
+        viewModel.startSubscriptionScan(account)
     }
 
     private fun observeViewModel() {
@@ -173,6 +253,29 @@ class MainActivity : AppCompatActivity() {
     private fun removeFragment() {
         supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list))?.let {
             supportFragmentManager.beginTransaction().remove(it).commit()
+        }
+    }
+
+    private fun cacheMailAccount(account: MailAccount) {
+        getSharedPreferences("mail_cleanup_auth", MODE_PRIVATE)
+            .edit()
+            .putString("account_name", account.accountName)
+            .putString("account_email", account.email)
+            .apply()
+    }
+
+    private fun loadCachedMailAccount(): MailAccount? {
+        val prefs = getSharedPreferences("mail_cleanup_auth", MODE_PRIVATE)
+        val accountName = prefs.getString("account_name", null) ?: return null
+        return MailAccount(
+            accountName = accountName,
+            email = prefs.getString("account_email", null)
+        )
+    }
+
+    private fun hasGmailModifyScope(result: AuthorizationResult): Boolean {
+        return result.grantedScopes.any { grantedScope ->
+            grantedScope.toString() == GmailScopes.GMAIL_MODIFY
         }
     }
 }

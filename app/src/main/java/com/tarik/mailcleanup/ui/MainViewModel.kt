@@ -123,6 +123,8 @@ class MainViewModel @Inject constructor(
         visibleSubscriptions.value = items
     }
 
+    fun currentMailAccount(): MailAccount? = signedInAccount.value
+
     fun onSignInStarted() {
         _uiState.update { it.copy(signInStatus = SignInUiStatus.InProgress) }
     }

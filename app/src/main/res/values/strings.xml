@@ -9,6 +9,7 @@
     <string name="error_sign_in_cancelled">Giriş işlemi iptal edildi.</string>
     <string name="error_scan_failed">Abonelikler taranırken bir hata oluştu.</string>
     <string name="error_provider_not_supported">Bu sağlayıcı henüz aktif değil.</string>
+    <string name="google_server_client_id">210813481041-sb63fv07l1cbcegm98lgv5asmefrqgmo.apps.googleusercontent.com</string>
     <string name="brand_title">The Curator</string>
     <string name="onboarding_badge">INBOX CLARITY</string>
     <string name="onboarding_headline_top">Curation begins</string>

@@ -58,6 +58,9 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.browser:browser:1.8.0")
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     // LIFECYCLE & VIEWMODEL
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
