@@ -19,7 +19,6 @@ import com.google.api.services.gmail.GmailScopes
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -108,23 +107,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            viewModel.scanState.collectLatest { state ->
-                when (state) {
-                    is ScanState.InProgress -> showLoadingView(getString(R.string.status_scanning))
-                    is ScanState.Success -> showSubscriptionList()
-                    is ScanState.Error -> showSignInView(state.message)
-                    is ScanState.Idle -> { /* SignInState tarafından yönetilecek */ }
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            viewModel.signInState.collectLatest { state ->
-                when (state) {
-                    is SignInState.InProgress -> showLoadingView(getString(R.string.status_signing_in))
-                    is SignInState.Idle -> showSignInView(null)
-                    is SignInState.Error -> showSignInView(state.message)
-                    is SignInState.Success -> { /* ScanState'e devredildi */ }
+            viewModel.uiState.collect { state ->
+                when {
+                    state.scanStatus is ScanUiStatus.InProgress -> showLoadingView(getString(R.string.status_scanning))
+                    state.scanStatus is ScanUiStatus.Success -> showSubscriptionList()
+                    state.scanStatus is ScanUiStatus.Error -> showSignInView((state.scanStatus as ScanUiStatus.Error).message)
+                    state.signInStatus is SignInUiStatus.InProgress -> showLoadingView(getString(R.string.status_signing_in))
+                    state.signInStatus is SignInUiStatus.Error -> showSignInView((state.signInStatus as SignInUiStatus.Error).message)
+                    else -> showSignInView(null)
                 }
             }
         }

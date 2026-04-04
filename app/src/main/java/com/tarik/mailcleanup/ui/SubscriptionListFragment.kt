@@ -33,7 +33,6 @@ import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -48,6 +47,7 @@ class SubscriptionListFragment : Fragment() {
     
     // --- YENİ: Listenin sonuna gelinip gelinmediğini takip edecek bayrak ---
     private var isLastPage = false
+    private var hasShownAllLoadedMessage = false
     private var actionMode: ActionMode? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -112,19 +112,19 @@ class SubscriptionListFragment : Fragment() {
     private fun setupRecyclerView() {
         subscriptionAdapter = SubscriptionAdapter(
             clickListener = { subscription ->
-                if (viewModel.isSelectionMode.value == true) {
+                if (viewModel.uiState.value.isSelectionMode) {
                     viewModel.toggleSelection(subscription)
                 }
             },
             longClickListener = { subscription ->
-                if (viewModel.isSelectionMode.value != true) {
+                if (!viewModel.uiState.value.isSelectionMode) {
                     viewModel.startSelectionMode(subscription)
                 }
                 true
             },
-            isSelectionMode = { viewModel.isSelectionMode.value == true },
+            isSelectionMode = { viewModel.uiState.value.isSelectionMode },
             isSelected = { subscription ->
-                viewModel.selectedItems.value?.contains(subscription) == true
+                viewModel.uiState.value.selectedItems.contains(subscription)
             },
             onUnsubscribeClicked = { subscription ->
                 showUnsubscribeConfirmationDialog(subscription)
@@ -207,104 +207,43 @@ class SubscriptionListFragment : Fragment() {
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.scanState.collect { state ->
-                if (state is ScanState.Success) {
-                    subscriptionAdapter.submitList(state.subscriptions)
-                    // YENİ: Boş durum kontrolü
-                    checkEmptyState(state.subscriptions)
-                } else if (state is ScanState.InProgress) {
-                    // Tarama başlarken boş ekranı gizle
+            viewModel.uiState.collect { state ->
+                subscriptionAdapter.submitList(state.filteredSubscriptions)
+                subscriptionAdapter.setProcessingState(state.processingEmail)
+                checkEmptyState(state.filteredSubscriptions)
+
+                binding.loadMoreProgressBar.visibility = if (state.isLoadingMore) View.VISIBLE else View.GONE
+                isLastPage = state.isLastPage
+
+                if (state.isLastPage && !hasShownAllLoadedMessage) {
+                    hasShownAllLoadedMessage = true
+                    showSnackbar(getString(R.string.snackbar_all_loaded))
+                } else if (!state.isLastPage) {
+                    hasShownAllLoadedMessage = false
+                }
+
+                if (state.scanStatus is ScanUiStatus.InProgress) {
                     binding.emptyStateLayout.visibility = View.GONE
                     binding.subscriptionsRecyclerView.visibility = View.VISIBLE
                 }
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.unsubscribeState.collect { state ->
-                when (state) {
-                    is UnsubscribeState.InProgress -> subscriptionAdapter.setProcessingState(state.email)
-                    is UnsubscribeState.Success -> {
-                        subscriptionAdapter.setProcessingState(null)
-                        val message = when (state.action) {
-                            is UnsubscribeAction.MailTo -> getString(R.string.snackbar_unsubscribed_mailto, state.email)
-                            else -> getString(R.string.snackbar_unsubscribed_success)
-                        }
-                        showUndoSnackbar(message)
-                        if (state.action is UnsubscribeAction.Http) {
-                            openUrlInCustomTab(state.action.url)
-                        }
-                    }
-                    is UnsubscribeState.Error -> {
-                        subscriptionAdapter.setProcessingState(null)
-                        showSnackbar("'${state.email}' için hata: ${state.message}", isError = true)
-                    }
-                    else -> {}
+                if (state.isSelectionMode && actionMode == null) {
+                    actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
+                } else if (!state.isSelectionMode && actionMode != null) {
+                    actionMode?.finish()
                 }
+                actionMode?.title = getString(R.string.selection_title, state.selectedItems.size)
+                subscriptionAdapter.submitList(state.filteredSubscriptions.toList())
             }
         }
-        
+
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.keepState.collect { state ->
-                 when (state) {
-                    is KeepState.Success -> showUndoSnackbar(getString(R.string.snackbar_kept, state.email))
-                    is KeepState.Error -> showSnackbar("'${state.email}' için hata: ${state.message}", isError = true)
-                    else -> {}
+            viewModel.uiEvent.collect { event ->
+                when (event) {
+                    is MainUiEvent.ShowUndo -> showUndoSnackbar(event.message)
+                    is MainUiEvent.ShowError -> showSnackbar(event.message, isError = true)
+                    is MainUiEvent.ShowMessage -> showSnackbar(event.message)
+                    is MainUiEvent.OpenUrl -> openUrlInCustomTab(event.url)
                 }
-            }
-        }
-        
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.loadMoreState.collect { state ->
-                // Gelen her durumu logla
-                Log.d("FragmentDebug", "Yeni loadMoreState alındı: ${state::class.simpleName}")
-
-                when (state) {
-                    is LoadMoreState.InProgress -> {
-                        Log.d("FragmentDebug", "ProgressBar GÖSTERİLİYOR")
-                        binding.loadMoreProgressBar.visibility = View.VISIBLE
-                    }
-                    is LoadMoreState.NoMoreData -> {
-                        Log.d("FragmentDebug", "ProgressBar GİZLENİYOR")
-                        binding.loadMoreProgressBar.visibility = View.GONE
-                        Log.d("FragmentDebug", "isLastPage = true olarak ayarlandı.")
-                        isLastPage = true
-                        showSnackbar(getString(R.string.snackbar_all_loaded))
-                    }
-                    is LoadMoreState.Error -> {
-                        Log.d("FragmentDebug", "ProgressBar GİZLENİYOR")
-                        binding.loadMoreProgressBar.visibility = View.GONE
-                        showSnackbar(state.message, isError = true)
-                    }
-                    is LoadMoreState.Success, is LoadMoreState.Idle -> {
-                        Log.d("FragmentDebug", "ProgressBar GİZLENİYOR")
-                        binding.loadMoreProgressBar.visibility = View.GONE
-                    }
-                }
-            }
-        }
-        
-        // YENİ: SEÇİM DURUMU GÖZLEMLERİ
-        viewModel.isSelectionMode.observe(viewLifecycleOwner) { inSelectionMode ->
-            if (inSelectionMode && actionMode == null) {
-                actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
-            } else if (!inSelectionMode && actionMode != null) {
-                // ViewModel seçim modunun bittiğini söylediğinde, modu kapat.
-                actionMode?.finish()
-            }
-        }
-
-        viewModel.selectedItems.observe(viewLifecycleOwner) { selection ->
-            actionMode?.title = getString(R.string.selection_title, selection.size)
-            // ListAdapter kullandığımız için, seçim değiştiğinde tüm listeyi
-            // yeniden göndermek en basit yöntemdir.
-            subscriptionAdapter.submitList(subscriptionAdapter.currentList.toList())
-        }
-
-        // YENİ: Toplu işlem sonucunu dinle
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.bulkActionResult.collectLatest { message ->
-                showSnackbar(message)
             }
         }
     }
