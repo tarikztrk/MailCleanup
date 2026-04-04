@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
 
         credentialManager = CredentialManager.create(this)
         setupClickListeners()
+        showSignInView(null)
         observeViewModel()
     }
 
@@ -86,8 +87,6 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         val cached = loadCachedMailAccount()
         if (cached != null) {
-            viewModel.onSignInSuccess()
-            viewModel.startSubscriptionScan(cached)
             requestGmailAuthorization(cached, silentOnly = true)
         } else {
             viewModel.resetToIdleState()
@@ -156,7 +155,9 @@ class MainActivity : AppCompatActivity() {
                 handleAuthorizationResult(account, result, silentOnly)
             }
             .addOnFailureListener {
-                if (!silentOnly) {
+                if (silentOnly) {
+                    viewModel.resetToIdleState()
+                } else {
                     viewModel.onSignInFailed(getString(R.string.error_auth))
                 }
             }
@@ -181,8 +182,12 @@ class MainActivity : AppCompatActivity() {
             hasGmailModifyScope(result) -> {
                 handleSignInSuccess(account)
             }
-            !silentOnly -> {
-                viewModel.onSignInFailed(getString(R.string.error_auth))
+            else -> {
+                if (silentOnly) {
+                    viewModel.resetToIdleState()
+                } else {
+                    viewModel.onSignInFailed(getString(R.string.error_auth))
+                }
             }
         }
     }
@@ -216,6 +221,7 @@ class MainActivity : AppCompatActivity() {
         removeFragment()
         binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.VISIBLE
+        binding.fragmentContainer.visibility = View.GONE
         binding.progressBar.visibility = View.VISIBLE
         binding.signInButton.visibility = View.GONE
         binding.outlookButton.visibility = View.GONE
@@ -228,6 +234,7 @@ class MainActivity : AppCompatActivity() {
         removeFragment()
         binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.VISIBLE
+        binding.fragmentContainer.visibility = View.GONE
         binding.progressBar.visibility = View.GONE
         binding.signInButton.visibility = View.VISIBLE
         binding.outlookButton.visibility = View.VISIBLE
@@ -243,6 +250,7 @@ class MainActivity : AppCompatActivity() {
     private fun showSubscriptionList() {
         binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.GONE
+        binding.fragmentContainer.visibility = View.VISIBLE
         if (supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list)) == null) {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainer, SubscriptionListFragment::class.java, null, getString(R.string.fragment_tag_subscription_list))
