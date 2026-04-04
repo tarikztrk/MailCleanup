@@ -3,9 +3,14 @@ package com.tarik.mailcleanup.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tarik.mailcleanup.core.text.StringProvider
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.filter
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.tarik.mailcleanup.R
+import com.tarik.mailcleanup.core.text.StringProvider
 import com.tarik.mailcleanup.domain.model.DomainError
 import com.tarik.mailcleanup.domain.model.DomainResult
 import com.tarik.mailcleanup.domain.model.Subscription
@@ -13,16 +18,21 @@ import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
 import com.tarik.mailcleanup.domain.usecase.KeepSubscriptionUseCase
 import com.tarik.mailcleanup.domain.usecase.UnsubscribeAndCleanUseCase
+import com.tarik.mailcleanup.ui.paging.SubscriptionPagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 
 sealed interface SignInUiStatus {
@@ -42,13 +52,10 @@ sealed interface ScanUiStatus {
 data class MainUiState(
     val signInStatus: SignInUiStatus = SignInUiStatus.Idle,
     val scanStatus: ScanUiStatus = ScanUiStatus.Idle,
-    val subscriptions: List<Subscription> = emptyList(),
-    val filteredSubscriptions: List<Subscription> = emptyList(),
     val searchQuery: String = "",
     val processingEmail: String? = null,
-    val isLoadingMore: Boolean = false,
-    val isLastPage: Boolean = false,
-    val selectedItems: Set<Subscription> = emptySet()
+    val selectedItems: Set<Subscription> = emptySet(),
+    val hiddenEmails: Set<String> = emptySet()
 ) {
     val isSelectionMode: Boolean get() = selectedItems.isNotEmpty()
 }
@@ -60,6 +67,7 @@ sealed interface MainUiEvent {
     data class OpenUrl(val url: String) : MainUiEvent
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val stringProvider: StringProvider,
@@ -74,22 +82,52 @@ class MainViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<MainUiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
+    private val signedInAccount = MutableStateFlow<GoogleSignInAccount?>(null)
+    private val visibleSubscriptions = MutableStateFlow<List<Subscription>>(emptyList())
+
+    val pagedSubscriptions: Flow<PagingData<Subscription>> = combine(
+        signedInAccount
+            .filterNotNull()
+            .flatMapLatest { account ->
+                Pager(
+                    config = PagingConfig(
+                        pageSize = 30,
+                        prefetchDistance = 5,
+                        enablePlaceholders = false
+                    ),
+                    pagingSourceFactory = {
+                        SubscriptionPagingSource(account, getSubscriptionsUseCase)
+                    }
+                ).flow
+            }
+            .cachedIn(viewModelScope),
+        _uiState
+    ) { pagingData, state ->
+        pagingData.filter { subscription ->
+            val matchesQuery = state.searchQuery.isBlank() ||
+                subscription.senderName.contains(state.searchQuery, ignoreCase = true) ||
+                subscription.senderEmail.contains(state.searchQuery, ignoreCase = true)
+
+            matchesQuery && !state.hiddenEmails.contains(subscription.senderEmail)
+        }
+    }
+
     private var pendingJob: Job? = null
     private var lastRemovedSubscription: Subscription? = null
-    private var lastRemovedSubscriptionIndex: Int = -1
-
-    private var lastEndDate: Calendar? = null
 
     fun setSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        applyFilter()
+    }
+
+    fun updateVisibleSubscriptions(items: List<Subscription>) {
+        visibleSubscriptions.value = items
     }
 
     fun onSignInStarted() {
         _uiState.update { it.copy(signInStatus = SignInUiStatus.InProgress) }
     }
 
-    fun onSignInSuccess(displayName: String?) {
+    fun onSignInSuccess() {
         _uiState.update { it.copy(signInStatus = SignInUiStatus.Success) }
     }
 
@@ -107,112 +145,27 @@ class MainViewModel @Inject constructor(
             it.copy(
                 scanStatus = ScanUiStatus.InProgress,
                 processingEmail = null,
-                isLoadingMore = false,
-                isLastPage = false,
-                subscriptions = emptyList(),
-                filteredSubscriptions = emptyList(),
                 selectedItems = emptySet(),
+                hiddenEmails = emptySet(),
                 searchQuery = ""
             )
         }
-        lastEndDate = null
 
-        viewModelScope.launch {
-            val (startDate, endDate) = getNextDateRange()
-            when (val result = getSubscriptionsUseCase(account, startDate, endDate)) {
-                is DomainResult.Success -> {
-                    val subscriptions = result.data.sortedByDescending { it.emailCount }
-                    lastEndDate = startDate
-                    _uiState.update {
-                        it.copy(
-                            scanStatus = ScanUiStatus.Success,
-                            subscriptions = subscriptions,
-                            filteredSubscriptions = subscriptions
-                        )
-                    }
-                }
-                is DomainResult.Error -> {
-                    Log.e("MainViewModel", "Abonelik tarama hatası: ${result.error}")
-                    _uiState.update {
-                        it.copy(
-                            scanStatus = ScanUiStatus.Error(domainErrorToMessage(result.error)),
-                            subscriptions = emptyList(),
-                            filteredSubscriptions = emptyList()
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    fun loadMoreSubscriptions(account: GoogleSignInAccount) {
-        val current = _uiState.value
-        if (current.isLoadingMore || current.isLastPage) return
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
-            try {
-                val (startDate, endDate) = getNextDateRange()
-                val oneYearAgo = Calendar.getInstance().apply { add(Calendar.YEAR, -1) }
-
-                if (startDate.before(oneYearAgo)) {
-                    _uiState.update { it.copy(isLoadingMore = false, isLastPage = true) }
-                    _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_all_loaded)))
-                    return@launch
-                }
-
-                when (val result = getSubscriptionsUseCase(account, startDate, endDate)) {
-                    is DomainResult.Success -> {
-                        val newSubscriptions = result.data
-                        if (newSubscriptions.isNotEmpty()) {
-                            val existing = _uiState.value.subscriptions
-                            val existingEmails = existing.map { it.senderEmail }.toSet()
-                            val merged = (existing + newSubscriptions.filterNot { existingEmails.contains(it.senderEmail) })
-                                .sortedByDescending { it.emailCount }
-
-                            lastEndDate = startDate
-                            _uiState.update {
-                                it.copy(
-                                    isLoadingMore = false,
-                                    subscriptions = merged,
-                                    selectedItems = it.selectedItems.filter { s -> merged.any { item -> item.senderEmail == s.senderEmail } }.toSet()
-                                )
-                            }
-                            applyFilter()
-                        } else {
-                            _uiState.update { it.copy(isLoadingMore = false, isLastPage = true) }
-                            _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_all_loaded)))
-                        }
-                    }
-                    is DomainResult.Error -> {
-                        _uiState.update { it.copy(isLoadingMore = false) }
-                        _uiEvent.emit(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("MainViewModel", "load more error", e)
-                _uiState.update { it.copy(isLoadingMore = false) }
-                _uiEvent.emit(MainUiEvent.ShowError(stringProvider.get(R.string.error_generic)))
-            }
-        }
+        signedInAccount.value = account
+        _uiState.update { it.copy(scanStatus = ScanUiStatus.Success) }
     }
 
     fun unsubscribeAndClean(account: GoogleSignInAccount, subscription: Subscription, cleanEmails: Boolean) {
         finalizePendingAction()
 
-        val currentList = _uiState.value.subscriptions.toMutableList()
-        lastRemovedSubscriptionIndex = currentList.indexOfFirst { it.senderEmail == subscription.senderEmail }
-        if (lastRemovedSubscriptionIndex == -1) return
-
-        lastRemovedSubscription = currentList.removeAt(lastRemovedSubscriptionIndex)
+        lastRemovedSubscription = subscription
         _uiState.update {
             it.copy(
-                subscriptions = currentList,
-                processingEmail = null,
-                selectedItems = it.selectedItems - subscription
+                hiddenEmails = it.hiddenEmails + subscription.senderEmail,
+                selectedItems = it.selectedItems - subscription,
+                processingEmail = null
             )
         }
-        applyFilter()
 
         pendingJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
             _uiState.update { it.copy(processingEmail = subscription.senderEmail) }
@@ -247,25 +200,20 @@ class MainViewModel @Inject constructor(
     fun keepSubscription(subscription: Subscription) {
         finalizePendingAction()
 
-        val currentList = _uiState.value.subscriptions.toMutableList()
-        lastRemovedSubscriptionIndex = currentList.indexOfFirst { it.senderEmail == subscription.senderEmail }
-        if (lastRemovedSubscriptionIndex == -1) return
-
-        lastRemovedSubscription = currentList.removeAt(lastRemovedSubscriptionIndex)
+        lastRemovedSubscription = subscription
         _uiState.update {
             it.copy(
-                subscriptions = currentList,
+                hiddenEmails = it.hiddenEmails + subscription.senderEmail,
                 selectedItems = it.selectedItems - subscription
             )
         }
-        applyFilter()
 
         pendingJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
             when (val result = keepSubscriptionUseCase(subscription)) {
                 is DomainResult.Success -> Unit
                 is DomainResult.Error -> {
                     undoLastAction(informUser = false)
-                    _uiEvent.emit(MainUiEvent.ShowError("'${subscription.senderEmail}' için hata: ${domainErrorToMessage(result.error)}"))
+                    _uiEvent.emit(MainUiEvent.ShowError("'${subscription.senderEmail}' icin hata: ${domainErrorToMessage(result.error)}"))
                 }
             }
         }
@@ -280,16 +228,9 @@ class MainViewModel @Inject constructor(
         pendingJob = null
 
         lastRemovedSubscription?.let { removed ->
-            if (lastRemovedSubscriptionIndex != -1) {
-                val updated = _uiState.value.subscriptions.toMutableList()
-                updated.add(lastRemovedSubscriptionIndex, removed)
-                _uiState.update { it.copy(subscriptions = updated.sortedByDescending { item -> item.emailCount }) }
-                applyFilter()
-            }
+            _uiState.update { it.copy(hiddenEmails = it.hiddenEmails - removed.senderEmail) }
         }
-
         lastRemovedSubscription = null
-        lastRemovedSubscriptionIndex = -1
 
         if (informUser) {
             viewModelScope.launch { _uiEvent.emit(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_undo))) }
@@ -300,7 +241,6 @@ class MainViewModel @Inject constructor(
         pendingJob?.start()
         pendingJob = null
         lastRemovedSubscription = null
-        lastRemovedSubscriptionIndex = -1
     }
 
     fun toggleSelection(subscription: Subscription) {
@@ -318,7 +258,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun selectAll() {
-        _uiState.update { it.copy(selectedItems = it.filteredSubscriptions.toSet()) }
+        _uiState.update { it.copy(selectedItems = visibleSubscriptions.value.toSet()) }
     }
 
     fun getSelectedItemsCount(): Int = _uiState.value.selectedItems.size
@@ -328,12 +268,14 @@ class MainViewModel @Inject constructor(
         if (itemsToKeep.isEmpty()) return
 
         viewModelScope.launch {
-            var successCount = 0
-            val updated = _uiState.value.subscriptions.toMutableList()
-            updated.removeAll(itemsToKeep)
-            _uiState.update { it.copy(subscriptions = updated, selectedItems = emptySet()) }
-            applyFilter()
+            _uiState.update {
+                it.copy(
+                    hiddenEmails = it.hiddenEmails + itemsToKeep.map { item -> item.senderEmail }.toSet(),
+                    selectedItems = emptySet()
+                )
+            }
 
+            var successCount = 0
             itemsToKeep.forEach {
                 if (keepSubscriptionUseCase(it) is DomainResult.Success) successCount++
             }
@@ -347,12 +289,14 @@ class MainViewModel @Inject constructor(
         if (itemsToUnsubscribe.isEmpty()) return
 
         viewModelScope.launch {
-            var successCount = 0
-            val updated = _uiState.value.subscriptions.toMutableList()
-            updated.removeAll(itemsToUnsubscribe)
-            _uiState.update { it.copy(subscriptions = updated, selectedItems = emptySet()) }
-            applyFilter()
+            _uiState.update {
+                it.copy(
+                    hiddenEmails = it.hiddenEmails + itemsToUnsubscribe.map { item -> item.senderEmail }.toSet(),
+                    selectedItems = emptySet()
+                )
+            }
 
+            var successCount = 0
             itemsToUnsubscribe.forEach {
                 if (unsubscribeAndCleanUseCase(account, it, cleanEmails) is DomainResult.Success) successCount++
             }
@@ -364,30 +308,9 @@ class MainViewModel @Inject constructor(
         pendingJob?.cancel()
         pendingJob = null
         lastRemovedSubscription = null
-        lastRemovedSubscriptionIndex = -1
-        lastEndDate = null
+        visibleSubscriptions.value = emptyList()
+        signedInAccount.value = null
         _uiState.update { MainUiState() }
-    }
-
-    private fun applyFilter() {
-        _uiState.update { state ->
-            val filtered = if (state.searchQuery.isBlank()) {
-                state.subscriptions
-            } else {
-                state.subscriptions.filter {
-                    it.senderName.contains(state.searchQuery, ignoreCase = true) ||
-                        it.senderEmail.contains(state.searchQuery, ignoreCase = true)
-                }
-            }
-            state.copy(filteredSubscriptions = filtered)
-        }
-    }
-
-    private fun getNextDateRange(): Pair<Calendar, Calendar> {
-        val endDate = (lastEndDate?.clone() as? Calendar) ?: Calendar.getInstance()
-        val startDate = endDate.clone() as Calendar
-        startDate.add(Calendar.DAY_OF_YEAR, -30)
-        return Pair(startDate, endDate)
     }
 
     private fun domainErrorToMessage(error: DomainError): String {

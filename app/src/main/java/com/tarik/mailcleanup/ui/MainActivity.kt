@@ -103,7 +103,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSignInSuccess(account: GoogleSignInAccount) {
-        viewModel.onSignInSuccess(account.displayName)
+        viewModel.onSignInSuccess()
         viewModel.startSubscriptionScan(account)
     }
 

@@ -8,12 +8,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.tarik.mailcleanup.R
-import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.databinding.ItemSubscriptionBinding
+import com.tarik.mailcleanup.domain.model.Subscription
 
 class SubscriptionAdapter(
     private val clickListener: (Subscription) -> Unit,
@@ -22,13 +22,13 @@ class SubscriptionAdapter(
     private val isSelected: (Subscription) -> Boolean,
     private val onUnsubscribeClicked: ((Subscription) -> Unit)? = null,
     private val onKeepClicked: ((Subscription) -> Unit)? = null
-) : ListAdapter<Subscription, SubscriptionAdapter.SubscriptionViewHolder>(SubscriptionDiffCallback()) {
+) : PagingDataAdapter<Subscription, SubscriptionAdapter.SubscriptionViewHolder>(SubscriptionDiffCallback()) {
 
     private var processingEmail: String? = null
 
     inner class SubscriptionViewHolder(val binding: ItemSubscriptionBinding) :
         RecyclerView.ViewHolder(binding.root) {
-        
+
         fun bind(subscription: Subscription) {
             binding.senderNameTextView.text = subscription.senderName
             val openRate = generateOpenRate(subscription.senderEmail)
@@ -44,17 +44,28 @@ class SubscriptionAdapter(
 
             when {
                 isSelected(subscription) -> {
-                    binding.itemCard.setCardBackgroundColor(ContextCompat.getColor(itemView.context, R.color.selected_item_background))
+                    binding.itemCard.setCardBackgroundColor(
+                        ContextCompat.getColor(
+                            itemView.context,
+                            R.color.selected_item_background
+                        )
+                    )
                 }
+
                 isLowEngagement -> {
-                    binding.itemCard.setCardBackgroundColor(ContextCompat.getColor(itemView.context, R.color.low_engagement_background))
+                    binding.itemCard.setCardBackgroundColor(
+                        ContextCompat.getColor(
+                            itemView.context,
+                            R.color.low_engagement_background
+                        )
+                    )
                 }
+
                 else -> {
                     binding.itemCard.setCardBackgroundColor(Color.WHITE)
                 }
             }
 
-            // Processing durumu yönetimi
             if (subscription.senderEmail == processingEmail) {
                 binding.actionLayout.visibility = View.INVISIBLE
                 binding.itemProgressBar.visibility = View.VISIBLE
@@ -63,7 +74,6 @@ class SubscriptionAdapter(
                 binding.itemProgressBar.visibility = View.GONE
             }
 
-            // Tıklama mantığını yönet
             itemView.setOnClickListener {
                 clickListener(subscription)
             }
@@ -71,7 +81,6 @@ class SubscriptionAdapter(
                 longClickListener(subscription)
             }
 
-            // Buton tıklamalarını sadece normal modda aktif et
             if (!isSelectionMode()) {
                 binding.unsubscribeButton.setOnClickListener {
                     onUnsubscribeClicked?.invoke(subscription)
@@ -98,22 +107,22 @@ class SubscriptionAdapter(
     }
 
     override fun onBindViewHolder(holder: SubscriptionViewHolder, position: Int) {
-        val subscription = getItem(position)
+        val subscription = getItem(position) ?: return
         holder.bind(subscription)
     }
 
     fun setProcessingState(email: String?) {
         val previousProcessingEmail = processingEmail
         processingEmail = email
-        
-        // Sadece değişen öğeleri güncellemek için daha verimli bir yol
+
         previousProcessingEmail?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
         email?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
     }
-    
+
     private fun findPositionByEmail(email: String): Int? {
         for (i in 0 until itemCount) {
-            if (getItem(i).senderEmail == email) {
+            val item = getItem(i) ?: continue
+            if (item.senderEmail == email) {
                 return i
             }
         }
@@ -157,7 +166,6 @@ class SubscriptionDiffCallback : DiffUtil.ItemCallback<Subscription>() {
     }
 
     override fun areContentsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
-        // Seçim durumunu da karşılaştırmaya ekleyebiliriz ama şimdilik bu yeterli.
         return oldItem == newItem
     }
 }

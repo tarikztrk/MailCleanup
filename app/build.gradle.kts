@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
 
     // LIFECYCLE & VIEWMODEL
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")

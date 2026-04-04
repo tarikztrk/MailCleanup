@@ -10,7 +10,6 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.SearchView
@@ -22,17 +21,16 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.paging.LoadState
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
-import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
+import com.tarik.mailcleanup.domain.model.Subscription
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -44,11 +42,8 @@ class SubscriptionListFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var subscriptionAdapter: SubscriptionAdapter
     private var currentAccount: GoogleSignInAccount? = null
-    
-    // --- YENİ: Listenin sonuna gelinip gelinmediğini takip edecek bayrak ---
-    private var isLastPage = false
+
     private var hasShownAllLoadedMessage = false
-    private var lastRenderedList: List<Subscription> = emptyList()
     private var actionMode: ActionMode? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -60,7 +55,7 @@ class SubscriptionListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         currentAccount = GoogleSignIn.getLastSignedInAccount(requireContext())
         setupRecyclerView()
-        setupMenu() // YENİ: Menüyü kur
+        setupMenu()
         observeViewModel()
     }
 
@@ -69,44 +64,49 @@ class SubscriptionListFragment : Fragment() {
             mode.menuInflater.inflate(R.menu.menu_selection, menu)
             return true
         }
+
         override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
+
         override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
             val selectedCount = viewModel.getSelectedItemsCount()
             if (selectedCount == 0) return false
 
             when (item.itemId) {
                 R.id.action_unsubscribe -> {
-                    // Toplu çıkış için de bir onay diyaloğu gösterelim
                     MaterialAlertDialogBuilder(requireContext())
                         .setTitle(getString(R.string.unsubscribe_dialog_title))
                         .setMessage(getString(R.string.unsubscribe_dialog_message, selectedCount.toString()))
                         .setNegativeButton(getString(R.string.dialog_option_unsubscribe_only)) { _, _ ->
                             viewModel.bulkUnsubscribeSelected(currentAccount, cleanEmails = false)
-                            mode.finish() // İşlem başlatıldığı için modu kapat
+                            mode.finish()
                         }
                         .setPositiveButton(getString(R.string.dialog_option_unsubscribe_and_clean)) { _, _ ->
                             viewModel.bulkUnsubscribeSelected(currentAccount, cleanEmails = true)
-                            mode.finish() // İşlem başlatıldığı için modu kapat
+                            mode.finish()
                         }
                         .setNeutralButton(getString(R.string.dialog_option_cancel), null)
                         .show()
                     return true
                 }
+
                 R.id.action_keep -> {
                     viewModel.bulkKeepSelected()
-                    mode.finish() // İşlem başlatıldığı için modu kapat
+                    mode.finish()
                     return true
                 }
+
                 R.id.action_select_all -> {
                     viewModel.selectAll()
                     return true
                 }
+
                 else -> return false
             }
         }
+
         override fun onDestroyActionMode(mode: ActionMode) {
             actionMode = null
-            viewModel.clearSelection() // Mod kapandığında seçimi temizle
+            viewModel.clearSelection()
         }
     }
 
@@ -124,9 +124,7 @@ class SubscriptionListFragment : Fragment() {
                 true
             },
             isSelectionMode = { viewModel.uiState.value.isSelectionMode },
-            isSelected = { subscription ->
-                viewModel.uiState.value.selectedItems.contains(subscription)
-            },
+            isSelected = { subscription -> viewModel.uiState.value.selectedItems.contains(subscription) },
             onUnsubscribeClicked = { subscription ->
                 showUnsubscribeConfirmationDialog(subscription)
             },
@@ -134,33 +132,18 @@ class SubscriptionListFragment : Fragment() {
                 viewModel.keepSubscription(subscription)
             }
         )
-        binding.subscriptionsRecyclerView.adapter = subscriptionAdapter
-        
-        // Sonsuz kaydırma için scroll listener ekle
-        binding.subscriptionsRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                super.onScrolled(recyclerView, dx, dy)
-                
-                // --- YENİ KONTROL: Eğer son sayfaya ulaşıldıysa, daha fazla istek gönderme ---
-                if (isLastPage) {
-                    return
-                }
 
-                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                val lastVisibleItemPosition = layoutManager.findLastVisibleItemPosition()
-                val totalItemCount = layoutManager.itemCount
-                
-                if (totalItemCount > 0 && lastVisibleItemPosition >= totalItemCount - 5) {
-                    // ViewModel'e daha fazla veri yüklemesi için sinyal gönder
-                    currentAccount?.let { account ->
-                        viewModel.loadMoreSubscriptions(account)
-                    }
-                }
+        binding.subscriptionsRecyclerView.adapter = subscriptionAdapter
+
+        subscriptionAdapter.addOnPagesUpdatedListener {
+            val visible = mutableListOf<Subscription>()
+            for (index in 0 until subscriptionAdapter.itemCount) {
+                subscriptionAdapter.peek(index)?.let { visible.add(it) }
             }
-        })
+            viewModel.updateVisibleSubscriptions(visible)
+        }
     }
-    
-    // --- YENİ FONKSİYON: Arama Menüsünü Kurma ---
+
     private fun setupMenu() {
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
@@ -170,23 +153,16 @@ class SubscriptionListFragment : Fragment() {
                 val searchView = searchItem.actionView as SearchView
 
                 searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                    override fun onQueryTextSubmit(query: String?): Boolean {
-                        // Kullanıcı Enter'a bastığında
-                        return true
-                    }
+                    override fun onQueryTextSubmit(query: String?): Boolean = true
 
                     override fun onQueryTextChange(newText: String?): Boolean {
-                        // Kullanıcı her harf girdiğinde
                         viewModel.setSearchQuery(newText.orEmpty())
                         return true
                     }
                 })
             }
 
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // Diğer menü öğeleri için
-                return true
-            }
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean = true
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
@@ -204,34 +180,61 @@ class SubscriptionListFragment : Fragment() {
             .show()
     }
 
-
-
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.uiState.collect { state ->
-                        if (state.filteredSubscriptions != lastRenderedList) {
-                            lastRenderedList = state.filteredSubscriptions
-                            subscriptionAdapter.submitList(state.filteredSubscriptions)
-                        }
-                        subscriptionAdapter.setProcessingState(state.processingEmail)
-                        checkEmptyState(state.filteredSubscriptions)
+                    viewModel.pagedSubscriptions.collectLatest { pagingData ->
+                        subscriptionAdapter.submitData(pagingData)
+                    }
+                }
 
-                        binding.loadMoreProgressBar.visibility = if (state.isLoadingMore) View.VISIBLE else View.GONE
-                        isLastPage = state.isLastPage
+                launch {
+                    subscriptionAdapter.loadStateFlow.collectLatest { loadState ->
+                        val isRefreshing = loadState.refresh is LoadState.Loading
+                        val isAppending = loadState.append is LoadState.Loading
+                        val isEmpty = !isRefreshing && subscriptionAdapter.itemCount == 0
+                        val endReached = loadState.append is LoadState.NotLoading &&
+                            (loadState.append as LoadState.NotLoading).endOfPaginationReached
 
-                        if (state.isLastPage && !hasShownAllLoadedMessage) {
+                        binding.loadMoreProgressBar.visibility = if (isAppending) View.VISIBLE else View.GONE
+                        checkEmptyState(isEmpty)
+
+                        if (endReached &&
+                            subscriptionAdapter.itemCount > 0 &&
+                            !hasShownAllLoadedMessage
+                        ) {
                             hasShownAllLoadedMessage = true
                             showSnackbar(getString(R.string.snackbar_all_loaded))
-                        } else if (!state.isLastPage) {
+                        }
+
+                        if (!endReached) {
                             hasShownAllLoadedMessage = false
                         }
+
+                        val errorState = when {
+                            loadState.refresh is LoadState.Error -> loadState.refresh as LoadState.Error
+                            loadState.append is LoadState.Error -> loadState.append as LoadState.Error
+                            else -> null
+                        }
+
+                        errorState?.let {
+                            Log.e("SubscriptionListFragment", "Paging error", it.error)
+                            showSnackbar(getString(R.string.error_generic), isError = true)
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.uiState.collect { state ->
+                        subscriptionAdapter.setProcessingState(state.processingEmail)
+                        subscriptionAdapter.notifyDataSetChanged()
 
                         if (state.scanStatus is ScanUiStatus.InProgress) {
                             binding.emptyStateLayout.visibility = View.GONE
                             binding.subscriptionsRecyclerView.visibility = View.VISIBLE
                         }
+
                         if (state.isSelectionMode && actionMode == null) {
                             actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
                         } else if (!state.isSelectionMode && actionMode != null) {
@@ -240,6 +243,7 @@ class SubscriptionListFragment : Fragment() {
                         actionMode?.title = getString(R.string.selection_title, state.selectedItems.size)
                     }
                 }
+
                 launch {
                     viewModel.uiEvent.collect { event ->
                         when (event) {
@@ -254,9 +258,8 @@ class SubscriptionListFragment : Fragment() {
         }
     }
 
-    // YENİ FONKSİYON
-    private fun checkEmptyState(subscriptions: List<Subscription>) {
-        if (subscriptions.isEmpty()) {
+    private fun checkEmptyState(isEmpty: Boolean) {
+        if (isEmpty) {
             binding.emptyStateLayout.visibility = View.VISIBLE
             binding.subscriptionsRecyclerView.visibility = View.GONE
         } else {
@@ -265,7 +268,6 @@ class SubscriptionListFragment : Fragment() {
         }
     }
 
-    // GÜNCELLENMİŞ Snackbar FONKSİYONU
     private fun showUndoSnackbar(message: String) {
         view?.let {
             Snackbar.make(it, message, Snackbar.LENGTH_LONG)
@@ -282,7 +284,7 @@ class SubscriptionListFragment : Fragment() {
                 .show()
         }
     }
-    
+
     private fun showSnackbar(message: String, isError: Boolean = false) {
         view?.let {
             val snackbar = Snackbar.make(it, message, Snackbar.LENGTH_LONG)
@@ -299,7 +301,7 @@ class SubscriptionListFragment : Fragment() {
             val customTabsIntent = builder.build()
             customTabsIntent.launchUrl(requireContext(), Uri.parse(url))
         } catch (e: Exception) {
-            Log.e("SubscriptionListFragment", "Custom Tab açılamadı, standart intent kullanılıyor.", e)
+            Log.e("SubscriptionListFragment", "Custom Tab acilamadi, standart intent kullaniliyor.", e)
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             startActivity(intent)
         }
@@ -307,7 +309,6 @@ class SubscriptionListFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        lastRenderedList = emptyList()
         _binding = null
     }
 }
