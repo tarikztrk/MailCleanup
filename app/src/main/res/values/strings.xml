@@ -88,7 +88,10 @@
     <string name="error_generic">Bir hata oluştu.</string>
     <string name="error_no_unsubscribe_method">Otomatik çıkış yöntemi bulunamadı.</string>
     <string name="error_keep_failed">Hata oluştu</string>
+    <string name="error_auth">Kimlik doğrulama hatası. Tekrar giriş yapın.</string>
+    <string name="error_rate_limit">Çok fazla istek gönderildi. Lütfen biraz sonra tekrar deneyin.</string>
     <string name="error_network">Ağ bağlantısı hatası.</string>
+    <string name="error_server">Sunucu hatası. Lütfen daha sonra tekrar deneyin.</string>
     
     <!-- Loading states -->
     <string name="loading_more">Daha fazla yükleniyor…</string>

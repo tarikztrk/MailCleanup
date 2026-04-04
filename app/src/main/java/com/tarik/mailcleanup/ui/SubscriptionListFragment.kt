@@ -28,7 +28,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
+import com.tarik.mailcleanup.domain.model.DomainError
 import com.tarik.mailcleanup.domain.model.Subscription
+import com.tarik.mailcleanup.ui.paging.DomainPagingException
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -220,7 +222,10 @@ class SubscriptionListFragment : Fragment() {
 
                         errorState?.let {
                             Log.e("SubscriptionListFragment", "Paging error", it.error)
-                            showSnackbar(getString(R.string.error_generic), isError = true)
+                            val message = (it.error as? DomainPagingException)
+                                ?.let { domainException -> domainErrorToMessage(domainException.domainError) }
+                                ?: getString(R.string.error_generic)
+                            showSnackbar(message, isError = true)
                         }
                     }
                 }
@@ -304,6 +309,18 @@ class SubscriptionListFragment : Fragment() {
             Log.e("SubscriptionListFragment", "Custom Tab acilamadi, standart intent kullaniliyor.", e)
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             startActivity(intent)
+        }
+    }
+
+    private fun domainErrorToMessage(error: DomainError): String {
+        return when (error) {
+            DomainError.Generic -> getString(R.string.error_generic)
+            DomainError.Auth -> getString(R.string.error_auth)
+            DomainError.RateLimit -> getString(R.string.error_rate_limit)
+            DomainError.Network -> getString(R.string.error_network)
+            DomainError.Server -> getString(R.string.error_server)
+            DomainError.NoUnsubscribeMethod -> getString(R.string.error_no_unsubscribe_method)
+            DomainError.KeepFailed -> getString(R.string.error_keep_failed)
         }
     }
 

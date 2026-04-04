@@ -316,6 +316,10 @@ class MainViewModel @Inject constructor(
     private fun domainErrorToMessage(error: DomainError): String {
         return when (error) {
             DomainError.Generic -> stringProvider.get(R.string.error_generic)
+            DomainError.Auth -> stringProvider.get(R.string.error_auth)
+            DomainError.RateLimit -> stringProvider.get(R.string.error_rate_limit)
+            DomainError.Network -> stringProvider.get(R.string.error_network)
+            DomainError.Server -> stringProvider.get(R.string.error_server)
             DomainError.NoUnsubscribeMethod -> stringProvider.get(R.string.error_no_unsubscribe_method)
             DomainError.KeepFailed -> stringProvider.get(R.string.error_keep_failed)
         }

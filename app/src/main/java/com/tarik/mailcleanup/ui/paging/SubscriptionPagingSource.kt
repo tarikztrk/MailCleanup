@@ -61,7 +61,7 @@ class SubscriptionPagingSource(
                     }
                     is DomainResult.Error -> {
                         return LoadResult.Error(
-                            IllegalStateException(result.error.toString())
+                            DomainPagingException(result.error)
                         )
                     }
                 }
