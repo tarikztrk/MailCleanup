@@ -2,14 +2,14 @@ package com.tarik.mailcleanup.ui.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.tarik.mailcleanup.domain.model.DomainResult
+import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
 import java.util.Calendar
 
 class SubscriptionPagingSource(
-    private val account: GoogleSignInAccount,
+    private val account: MailAccount,
     private val getSubscriptionsUseCase: GetSubscriptionsUseCase
 ) : PagingSource<Int, Subscription>() {
 

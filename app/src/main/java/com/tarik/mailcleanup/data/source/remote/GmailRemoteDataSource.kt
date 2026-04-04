@@ -1,8 +1,8 @@
 package com.tarik.mailcleanup.data.source.remote
 
+import android.accounts.Account
 import android.content.Context
 import android.util.Log
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.api.client.googleapis.batch.json.JsonBatchCallback
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.googleapis.json.GoogleJsonError
@@ -14,6 +14,7 @@ import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import com.google.api.services.gmail.model.Message
 import com.tarik.mailcleanup.data.ProcessedSubscription
+import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -37,7 +38,7 @@ class GmailRemoteDataSource @Inject constructor(
 ) {
 
     suspend fun fetchSubscriptions(
-        account: GoogleSignInAccount,
+        account: MailAccount,
         startDate: Calendar,
         endDate: Calendar,
         processedByEmail: Map<String, ProcessedSubscription>
@@ -120,7 +121,7 @@ class GmailRemoteDataSource @Inject constructor(
     }
 
     suspend fun unsubscribeAndClean(
-        account: GoogleSignInAccount,
+        account: MailAccount,
         subscription: Subscription,
         cleanEmails: Boolean
     ): UnsubscribeAction? = withContext(Dispatchers.IO) {
@@ -146,9 +147,9 @@ class GmailRemoteDataSource @Inject constructor(
         action
     }
 
-    private fun buildGmail(account: GoogleSignInAccount): Gmail {
+    private fun buildGmail(account: MailAccount): Gmail {
         val credential = GoogleAccountCredential.usingOAuth2(context, listOf(GmailScopes.GMAIL_MODIFY))
-            .setSelectedAccount(account.account)
+            .setSelectedAccount(Account(account.accountName, "com.google"))
         return Gmail.Builder(NetHttpTransport(), GsonFactory(), credential)
             .setApplicationName("Mail Cleanup")
             .build()

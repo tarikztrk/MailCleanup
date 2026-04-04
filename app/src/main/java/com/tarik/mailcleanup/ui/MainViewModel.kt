@@ -8,11 +8,11 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.filter
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.core.text.StringProvider
 import com.tarik.mailcleanup.domain.model.DomainError
 import com.tarik.mailcleanup.domain.model.DomainResult
+import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
@@ -82,7 +82,7 @@ class MainViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<MainUiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
-    private val signedInAccount = MutableStateFlow<GoogleSignInAccount?>(null)
+    private val signedInAccount = MutableStateFlow<MailAccount?>(null)
     private val visibleSubscriptions = MutableStateFlow<List<Subscription>>(emptyList())
 
     val pagedSubscriptions: Flow<PagingData<Subscription>> = combine(
@@ -140,7 +140,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun startSubscriptionScan(account: GoogleSignInAccount) {
+    fun startSubscriptionScan(account: MailAccount) {
         _uiState.update {
             it.copy(
                 scanStatus = ScanUiStatus.InProgress,
@@ -155,7 +155,7 @@ class MainViewModel @Inject constructor(
         _uiState.update { it.copy(scanStatus = ScanUiStatus.Success) }
     }
 
-    fun unsubscribeAndClean(account: GoogleSignInAccount, subscription: Subscription, cleanEmails: Boolean) {
+    fun unsubscribeAndClean(account: MailAccount, subscription: Subscription, cleanEmails: Boolean) {
         finalizePendingAction()
 
         lastRemovedSubscription = subscription
@@ -283,7 +283,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun bulkUnsubscribeSelected(account: GoogleSignInAccount?, cleanEmails: Boolean) {
+    fun bulkUnsubscribeSelected(account: MailAccount?, cleanEmails: Boolean) {
         if (account == null) return
         val itemsToUnsubscribe = _uiState.value.selectedItems
         if (itemsToUnsubscribe.isEmpty()) return

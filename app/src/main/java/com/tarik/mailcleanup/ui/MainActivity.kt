@@ -20,6 +20,7 @@ import com.google.android.gms.common.api.Scope
 import com.google.api.services.gmail.GmailScopes
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.ActivityMainBinding
+import com.tarik.mailcleanup.ui.mapper.toMailAccountOrNull
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -103,8 +104,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSignInSuccess(account: GoogleSignInAccount) {
+        val mailAccount = account.toMailAccountOrNull()
+        if (mailAccount == null) {
+            viewModel.onSignInFailed(getString(R.string.error_auth))
+            return
+        }
         viewModel.onSignInSuccess()
-        viewModel.startSubscriptionScan(account)
+        viewModel.startSubscriptionScan(mailAccount)
     }
 
     private fun observeViewModel() {

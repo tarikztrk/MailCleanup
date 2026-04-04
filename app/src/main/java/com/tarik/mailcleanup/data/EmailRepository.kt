@@ -1,12 +1,12 @@
 package com.tarik.mailcleanup.data
 
 import android.util.Log
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.tarik.mailcleanup.data.source.local.ProcessedSubscriptionLocalDataSource
 import com.tarik.mailcleanup.data.source.remote.GmailRemoteDataSource
 import com.tarik.mailcleanup.domain.model.DomainError
 import com.tarik.mailcleanup.domain.model.DomainResult
+import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.domain.repository.SubscriptionRepository
@@ -23,7 +23,7 @@ class EmailRepository @Inject constructor(
 ) : SubscriptionRepository {
 
     override suspend fun getSubscriptions(
-        account: GoogleSignInAccount,
+        account: MailAccount,
         startDate: Calendar,
         endDate: Calendar
     ): DomainResult<List<Subscription>> {
@@ -37,7 +37,7 @@ class EmailRepository @Inject constructor(
     }
 
     override suspend fun unsubscribeAndClean(
-        account: GoogleSignInAccount,
+        account: MailAccount,
         subscription: Subscription,
         cleanEmails: Boolean
     ): DomainResult<UnsubscribeAction> {
