@@ -7,7 +7,7 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
     app:cardBackgroundColor="@android:color/white"
-    app:cardCornerRadius="20dp"
+    app:cardCornerRadius="24dp"
     app:cardElevation="0dp"
     app:rippleColor="#140A4EC8"
     app:strokeColor="@android:color/transparent"
@@ -16,7 +16,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp">
+        android:padding="14dp">
 
         <!-- Düşük etkileşimli satırlarda solda kırmızı vurgu çubuğu görünür. -->
         <View
@@ -32,8 +32,8 @@
 
         <TextView
             android:id="@+id/senderIconTextView"
-            android:layout_width="46dp"
-            android:layout_height="46dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="@drawable/bg_item_icon_box"
             android:gravity="center"
             android:textColor="@color/secondary_text"
@@ -63,7 +63,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/surface_text_primary"
-                android:textSize="13sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
                 tools:text="The Morning Brew" />
 
@@ -77,8 +77,7 @@
                 android:textColor="#A31621"
                 android:textSize="9sp"
                 android:textStyle="bold"
-                android:visibility="gone"
-                tools:visibility="visible" />
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/senderEmailTextView"
@@ -88,7 +87,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/secondary_text"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 tools:text="6 emails/week • 98% Open rate" />
         </LinearLayout>
 
@@ -100,30 +99,18 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
-            <ImageButton
-                android:id="@+id/unsubscribeIconButton"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_gravity="center_vertical|end"
-                android:background="@drawable/bg_unsubscribe_icon_selector"
-                android:contentDescription="@string/button_unsubscribe"
-                android:padding="9dp"
-                android:src="@drawable/ic_close_red"
-                android:tint="#A31621" />
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/unsubscribeButton"
-                android:layout_width="112dp"
+                android:layout_width="116dp"
                 android:layout_height="40dp"
                 android:layout_gravity="center_vertical|end"
                 android:background="@drawable/bg_unsubscribe_pill_selector"
                 android:text="@string/unsubscribe_full"
                 android:textAllCaps="false"
                 android:textColor="@android:color/white"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
-                android:visibility="gone"
-                tools:visibility="visible" />
+                android:visibility="visible" />
         </FrameLayout>
 
         <!-- Satır bazında unsubscribe işlemi sürerken gösterilir. -->

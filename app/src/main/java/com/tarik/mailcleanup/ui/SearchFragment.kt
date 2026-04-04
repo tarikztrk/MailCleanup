@@ -11,9 +11,9 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.FragmentSearchBinding
+import com.tarik.mailcleanup.domain.model.Subscription
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -42,7 +42,7 @@ class SearchFragment : Fragment() {
 
     private fun setupUi() {
         adapter = SearchResultAdapter { subscription ->
-            Snackbar.make(binding.root, getString(R.string.search_opening_result, subscription.senderName), Snackbar.LENGTH_SHORT).show()
+            openDetailScreen(subscription)
         }
         binding.searchResultsRecyclerView.adapter = adapter
         pagesUpdatedListener = {
@@ -88,6 +88,22 @@ class SearchFragment : Fragment() {
     private fun updateMatchCount() {
         val safeBinding = _binding ?: return
         safeBinding.matchCountTextView.text = getString(R.string.search_match_count_format, adapter.itemCount)
+    }
+
+    private fun openDetailScreen(subscription: Subscription) {
+        parentFragmentManager.beginTransaction()
+            .replace(
+                R.id.fragmentContainer,
+                SubscriptionDetailFragment::class.java,
+                SubscriptionDetailFragment.createArgs(
+                    senderName = subscription.senderName,
+                    senderEmail = subscription.senderEmail,
+                    emailCount = subscription.emailCount
+                ),
+                getString(R.string.fragment_tag_subscription_detail)
+            )
+            .addToBackStack(getString(R.string.fragment_tag_subscription_detail))
+            .commit()
     }
 
     override fun onDestroyView() {

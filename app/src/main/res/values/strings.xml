@@ -90,6 +90,22 @@
     <string name="search_back">Geri</string>
     <string name="search_opening_result">%1$s açılıyor</string>
     <string name="clear_search">Aramayı temizle</string>
+    <string name="detail_weekly_digest">WEEKLY DIGEST</string>
+    <string name="detail_total_emails_received">Total emails received</string>
+    <string name="detail_storage_saved">Storage space saved</string>
+    <string name="detail_frequency">Frequency</string>
+    <string name="detail_stable">Stable</string>
+    <string name="detail_management_actions">Management Actions</string>
+    <string name="detail_delete_all">Delete All Emails</string>
+    <string name="detail_info_note">Unsubscribing will stop future communications.\nDeleting emails is permanent and cannot be undone.</string>
+    <string name="detail_unsubscribe_title">Unsubscribe</string>
+    <string name="detail_unsubscribe_message">Bu gönderici için abonelikten çıkış işlemi başlatılsın mı?</string>
+    <string name="detail_unsubscribe_confirm">Başlat</string>
+    <string name="detail_delete_title">Delete All Emails</string>
+    <string name="detail_delete_message">Bu göndericiye ait tüm e-postaları silme işlemi başlatılsın mı?</string>
+    <string name="detail_delete_confirm">Sil</string>
+    <string name="detail_action_queued">İşlem kuyruğa alındı.</string>
+    <string name="detail_items_count">%1$d items</string>
     <string name="nav_home_selected">Ana sayfadasın.</string>
     <string name="nav_activity_soon">Activity ekranı yakında.</string>
     <string name="nav_settings_soon">Settings ekranı yakında.</string>
@@ -132,4 +148,5 @@
     <!-- Fragment tags -->
     <string name="fragment_tag_subscription_list">SubscriptionListFragment</string>
     <string name="fragment_tag_search">SearchFragment</string>
+    <string name="fragment_tag_subscription_detail">SubscriptionDetailFragment</string>
 </resources>

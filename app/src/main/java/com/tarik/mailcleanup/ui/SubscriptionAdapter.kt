@@ -39,11 +39,9 @@ class SubscriptionAdapter(
             val initial = subscription.senderName.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
             binding.senderIconTextView.text = initial
 
-            val isLowEngagement = openRate <= 15
-            binding.lowEngagementTextView.visibility = if (isLowEngagement) View.VISIBLE else View.GONE
-            binding.leftAccent.visibility = if (isLowEngagement) View.VISIBLE else View.GONE
-            binding.unsubscribeIconButton.visibility = if (isLowEngagement) View.GONE else View.VISIBLE
-            binding.unsubscribeButton.visibility = if (isLowEngagement) View.VISIBLE else View.GONE
+            binding.lowEngagementTextView.visibility = View.GONE
+            binding.leftAccent.visibility = View.GONE
+            binding.unsubscribeButton.visibility = View.VISIBLE
 
             when {
                 isSelected(subscription) -> {
@@ -51,15 +49,6 @@ class SubscriptionAdapter(
                         ContextCompat.getColor(
                             itemView.context,
                             R.color.selected_item_background
-                        )
-                    )
-                }
-
-                isLowEngagement -> {
-                    binding.itemCard.setCardBackgroundColor(
-                        ContextCompat.getColor(
-                            itemView.context,
-                            R.color.low_engagement_background
                         )
                     )
                 }
@@ -86,11 +75,6 @@ class SubscriptionAdapter(
             }
 
             binding.unsubscribeButton.setOnClickListener {
-                if (!isSelectionMode()) {
-                    onUnsubscribeClicked?.invoke(subscription)
-                }
-            }
-            binding.unsubscribeIconButton.setOnClickListener {
                 if (!isSelectionMode()) {
                     onUnsubscribeClicked?.invoke(subscription)
                 }

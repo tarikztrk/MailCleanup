@@ -118,6 +118,8 @@ class SubscriptionListFragment : Fragment() {
             clickListener = { subscription ->
                 if (viewModel.uiState.value.isSelectionMode) {
                     viewModel.toggleSelection(subscription)
+                } else {
+                    openDetailScreen(subscription)
                 }
             },
             longClickListener = { subscription ->
@@ -175,6 +177,22 @@ class SubscriptionListFragment : Fragment() {
                 getString(R.string.fragment_tag_search)
             )
             .addToBackStack(getString(R.string.fragment_tag_search))
+            .commit()
+    }
+
+    private fun openDetailScreen(subscription: Subscription) {
+        parentFragmentManager.beginTransaction()
+            .replace(
+                R.id.fragmentContainer,
+                SubscriptionDetailFragment::class.java,
+                SubscriptionDetailFragment.createArgs(
+                    senderName = subscription.senderName,
+                    senderEmail = subscription.senderEmail,
+                    emailCount = subscription.emailCount
+                ),
+                getString(R.string.fragment_tag_subscription_detail)
+            )
+            .addToBackStack(getString(R.string.fragment_tag_subscription_detail))
             .commit()
     }
 
