@@ -6,12 +6,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.tarik.mailcleanup.R
-import com.tarik.mailcleanup.data.EmailRepository
-import com.tarik.mailcleanup.data.Subscription
-import com.tarik.mailcleanup.data.UnsubscribeAction
+import com.tarik.mailcleanup.domain.model.Subscription
+import com.tarik.mailcleanup.domain.model.UnsubscribeAction
+import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
+import com.tarik.mailcleanup.domain.usecase.KeepSubscriptionUseCase
+import com.tarik.mailcleanup.domain.usecase.UnsubscribeAndCleanUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import javax.inject.Inject
 
 sealed class SignInState {
     object Idle : SignInState()
@@ -57,9 +60,13 @@ sealed class LoadMoreState {
     data class Error(val message: String) : LoadMoreState()
 }
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = EmailRepository(application.applicationContext)
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    application: Application,
+    private val getSubscriptionsUseCase: GetSubscriptionsUseCase,
+    private val unsubscribeAndCleanUseCase: UnsubscribeAndCleanUseCase,
+    private val keepSubscriptionUseCase: KeepSubscriptionUseCase
+) : AndroidViewModel(application) {
     private val _signInState = MutableSharedFlow<SignInState>(replay = 1)
     val signInState = _signInState.asSharedFlow()
     
@@ -147,7 +154,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val (startDate, endDate) = getNextDateRange()
-                val subscriptions = repository.getSubscriptions(account, startDate, endDate)
+                val subscriptions = getSubscriptionsUseCase(account, startDate, endDate)
                 updateSubscriptionList(subscriptions)
                 lastEndDate = startDate // Bir sonraki aralık için başlangıç tarihi olacak
                 Log.d("MainViewModel", "İlk tarama tamamlandı: ${subscriptions.size} abonelik bulundu")
@@ -190,7 +197,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d("ViewModelDebug", "STATE -> InProgress")
                     _loadMoreState.tryEmit(LoadMoreState.InProgress)
                     
-                    val newSubscriptions = repository.getSubscriptions(account, startDate, endDate)
+                    val newSubscriptions = getSubscriptionsUseCase(account, startDate, endDate)
                     
                     if (newSubscriptions.isNotEmpty()) {
                         // Sadece gerçekten yeni olanları ekle
@@ -240,7 +247,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             pendingJob = viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
                 // Bu kod bloğu, sadece biz .start() veya .join() dediğimizde çalışacak.
                 _unsubscribeState.emit(UnsubscribeState.InProgress(subscription.senderEmail))
-                val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
+                val action = unsubscribeAndCleanUseCase(account, subscription, cleanEmails)
                 if (action is UnsubscribeAction.NotFound) {
                     _unsubscribeState.emit(UnsubscribeState.Error(subscription.senderEmail, getApplication<Application>().getString(R.string.error_no_unsubscribe_method)))
                     undoLastAction(informUser = false) // Kullanıcıya tekrar bildirmeden geri al
@@ -267,7 +274,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             updateSubscriptionList(currentList)
             
             pendingJob = viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
-                val success = repository.keepSubscription(subscription)
+                val success = keepSubscriptionUseCase(subscription)
                 if (!success) {
                     _keepState.emit(KeepState.Error(subscription.senderEmail, getApplication<Application>().getString(R.string.error_keep_failed)))
                     undoLastAction(informUser = false)
@@ -375,7 +382,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             // Arka planda veritabanı işlemlerini yap
             itemsToKeep.forEach { subscription ->
-                if (repository.keepSubscription(subscription)) {
+                if (keepSubscriptionUseCase(subscription)) {
                     successCount++
                 }
             }
@@ -403,7 +410,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             updateSubscriptionList(currentList)
             
             itemsToUnsubscribe.forEach { subscription ->
-                val action = repository.unsubscribeAndClean(account, subscription, cleanEmails)
+                val action = unsubscribeAndCleanUseCase(account, subscription, cleanEmails)
                 if (action !is UnsubscribeAction.NotFound) {
                     successCount++
                 }

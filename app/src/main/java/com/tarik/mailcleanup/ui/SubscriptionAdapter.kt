@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.tarik.mailcleanup.R
-import com.tarik.mailcleanup.data.Subscription
+import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.databinding.ItemSubscriptionBinding
 
 class SubscriptionAdapter(

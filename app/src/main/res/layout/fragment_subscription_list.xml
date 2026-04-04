@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -7,367 +7,368 @@
     android:background="@color/surface_background"
     tools:context=".ui.SubscriptionListFragment">
 
-    <LinearLayout
-        android:id="@+id/topContentLayout"
-        android:layout_width="0dp"
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/headerAppBar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="14dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="14dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:background="@color/surface_background"
+        android:elevation="0dp">
 
         <LinearLayout
+            android:id="@+id/topContentLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="@drawable/bg_profile_placeholder"
-                android:contentDescription="@string/profile_avatar_cd"
-                android:padding="8dp"
-                android:src="@drawable/ic_profile_avatar" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:layout_weight="1"
-                android:fontFamily="sans-serif-black"
-                android:text="@string/brand_title"
-                android:textColor="@color/surface_text_primary"
-                android:textSize="18sp" />
-
-            <ImageButton
-                android:id="@+id/searchButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="@drawable/bg_search_button_selector"
-                android:clickable="true"
-                android:contentDescription="@string/search_cd"
-                android:focusable="true"
-                android:padding="7dp"
-                android:src="@drawable/ic_search_simple"
-                app:tint="@color/brand_primary" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingStart="14dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="14dp"
+            app:layout_scrollFlags="scroll|snap">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="110dp"
-                android:background="@drawable/bg_stats_main_card"
-                android:orientation="vertical"
-                android:padding="18dp">
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/bg_profile_placeholder"
+                    android:contentDescription="@string/profile_avatar_cd"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_profile_avatar" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/weekly_inflow_label"
-                    android:textAllCaps="true"
-                    android:textColor="@color/surface_text_tertiary"
-                    android:textSize="11sp" />
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-black"
+                    android:text="@string/brand_title"
+                    android:textColor="@color/surface_text_primary"
+                    android:textSize="18sp" />
+
+                <ImageButton
+                    android:id="@+id/searchButton"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_search_button_selector"
+                    android:clickable="true"
+                    android:contentDescription="@string/search_cd"
+                    android:focusable="true"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_search_simple"
+                    app:tint="@color/brand_primary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="110dp"
+                    android:background="@drawable/bg_stats_main_card"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/weekly_inflow_label"
+                        android:textAllCaps="true"
+                        android:textColor="@color/surface_text_tertiary"
+                        android:textSize="11sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="bottom"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/weekly_inflow_count"
+                            android:textColor="@color/surface_text_primary"
+                            android:textSize="24sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/weekly_inflow_delta"
+                                android:textColor="#B3261E"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/vs_last_week"
+                                android:textAllCaps="true"
+                                android:textColor="@color/surface_text_tertiary"
+                                android:textSize="10sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:gravity="bottom"
+                    android:layout_marginTop="12dp"
                     android:orientation="horizontal">
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/weekly_inflow_count"
-                        android:textColor="@color/surface_text_primary"
-                        android:textSize="24sp"
-                        android:textStyle="bold" />
-
                     <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:gravity="end"
-                        android:orientation="vertical">
+                        android:layout_width="0dp"
+                        android:layout_height="96dp"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_stats_secondary_blue"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_sparkles_blue" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/weekly_inflow_delta"
-                            android:textColor="#B3261E"
-                            android:textSize="12sp"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/smart_filters_count"
+                            android:textColor="@color/brand_primary"
+                            android:textSize="16sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/vs_last_week"
-                            android:textAllCaps="true"
-                            android:textColor="@color/surface_text_tertiary"
-                            android:textSize="10sp" />
+                            android:text="@string/smart_filters_label"
+                            android:textColor="@color/secondary_text"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="96dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_stats_secondary_gray"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_history_simple"
+                            app:tint="@color/secondary_text" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/saved_minutes_count"
+                            android:textColor="@color/surface_text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/saved_minutes_label"
+                            android:textColor="@color/secondary_text"
+                            android:textSize="12sp" />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/sortControl"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:orientation="horizontal">
+                android:background="@drawable/bg_sort_control_selector"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="10dp">
 
-                <LinearLayout
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_filter_simple"
+                    app:tint="@color/surface_text_tertiary" />
+
+                <TextView
                     android:layout_width="0dp"
-                    android:layout_height="96dp"
-                    android:layout_marginEnd="6dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_stats_secondary_blue"
-                    android:orientation="vertical"
-                    android:padding="14dp">
+                    android:text="@string/sort_by_most_frequent"
+                    android:textColor="@color/surface_text_secondary"
+                    android:textSize="14sp" />
 
-                    <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_sparkles_blue" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/smart_filters_count"
-                        android:textColor="@color/brand_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/smart_filters_label"
-                        android:textColor="@color/secondary_text"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="96dp"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_stats_secondary_gray"
-                    android:orientation="vertical"
-                    android:padding="14dp">
-
-                    <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_history_simple"
-                        app:tint="@color/secondary_text" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/saved_minutes_count"
-                        android:textColor="@color/surface_text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/saved_minutes_label"
-                        android:textColor="@color/secondary_text"
-                        android:textSize="12sp" />
-                </LinearLayout>
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_down"
+                    app:tint="@color/surface_text_tertiary" />
             </LinearLayout>
-        </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/sortControl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/bg_sort_control_selector"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="10dp">
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:overScrollMode="never"
+                android:scrollbars="none">
 
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_filter_simple"
-                app:tint="@color/surface_text_tertiary" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/filterAllChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_filter_chip_active_selector"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="7dp"
+                        android:text="@string/filter_all_active"
+                        android:textColor="@android:color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/filterNewslettersChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_filter_chip_inactive_selector"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="7dp"
+                        android:text="@string/filter_newsletters"
+                        android:textColor="@color/secondary_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/filterPromotionsChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_filter_chip_inactive_selector"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="7dp"
+                        android:text="@string/filter_promotions"
+                        android:textColor="@color/secondary_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </HorizontalScrollView>
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="@string/sort_by_most_frequent"
-                android:textColor="@color/surface_text_secondary"
-                android:textSize="14sp" />
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron_down"
-                app:tint="@color/surface_text_tertiary" />
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="6dp"
+                android:text="@string/active_subscriptions_title"
+                android:textColor="@color/surface_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
         </LinearLayout>
+    </com.google.android.material.appbar.AppBarLayout>
 
-        <HorizontalScrollView
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/subscriptionsRecyclerView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:overScrollMode="never"
-            android:scrollbars="none">
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="86dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_subscription" />
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/filterAllChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_filter_chip_active_selector"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="7dp"
-                    android:text="@string/filter_all_active"
-                    android:textColor="@android:color/white"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/filterNewslettersChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_filter_chip_inactive_selector"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="7dp"
-                    android:text="@string/filter_newsletters"
-                    android:textColor="@color/secondary_text"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/filterPromotionsChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_filter_chip_inactive_selector"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="7dp"
-                    android:text="@string/filter_promotions"
-                    android:textColor="@color/secondary_text"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </HorizontalScrollView>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:layout_marginBottom="6dp"
-            android:text="@string/active_subscriptions_title"
-            android:textColor="@color/surface_text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/subscriptionsRecyclerView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:clipToPadding="false"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:paddingBottom="86dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/topContentLayout"
-        tools:listitem="@layout/item_subscription" />
-
-    <LinearLayout
-        android:id="@+id/emptyStateLayout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/subscriptionsRecyclerView"
-        app:layout_constraintEnd_toEndOf="@+id/subscriptionsRecyclerView"
-        app:layout_constraintStart_toStartOf="@+id/subscriptionsRecyclerView"
-        app:layout_constraintTop_toTopOf="@+id/subscriptionsRecyclerView"
-        tools:visibility="visible">
-
-        <ImageView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:contentDescription="@string/mailbox_clean_cd"
-            android:src="@drawable/ic_mailbox_clean"
-            app:tint="?attr/colorControlNormal" />
-
-        <TextView
-            android:id="@+id/emptyStateTextView"
+        <LinearLayout
+            android:id="@+id/emptyStateLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/empty_state_message"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-            android:textColor="?android:attr/textColorSecondary" />
-    </LinearLayout>
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
 
-    <ProgressBar
-        android:id="@+id/loadMoreProgressBar"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="90dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        tools:visibility="visible" />
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:contentDescription="@string/mailbox_clean_cd"
+                android:src="@drawable/ic_mailbox_clean"
+                app:tint="?attr/colorControlNormal" />
+
+            <TextView
+                android:id="@+id/emptyStateTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/empty_state_message"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                android:textColor="?android:attr/textColorSecondary" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/loadMoreProgressBar"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="90dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/bottomNavBar"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="70dp"
+        android:layout_gravity="bottom"
         android:layout_marginStart="10dp"
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="10dp"
         android:background="@drawable/bg_bottom_nav"
         android:gravity="center"
         android:orientation="horizontal"
-        android:paddingHorizontal="12dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        android:paddingHorizontal="12dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -386,8 +387,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_bottom_nav_active"
                 android:layout_marginTop="2dp"
+                android:background="@drawable/bg_bottom_nav_active"
                 android:paddingHorizontal="14dp"
                 android:paddingVertical="8dp"
                 android:text="@string/nav_home"
@@ -452,15 +453,14 @@
         android:id="@+id/fabAdd"
         android:layout_width="56dp"
         android:layout_height="56dp"
+        android:layout_gravity="bottom|end"
         android:layout_marginEnd="14dp"
         android:layout_marginBottom="86dp"
         android:contentDescription="@string/add_action_cd"
         android:stateListAnimator="@null"
         android:src="@drawable/ic_add_white"
         app:backgroundTint="@color/brand_primary"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:rippleColor="#4DFFFFFF"
         app:tint="@android:color/white" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

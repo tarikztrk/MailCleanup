@@ -1,7 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinKapt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hiltAndroid)
 }
 
 android {
@@ -79,6 +81,10 @@ dependencies {
     // E-POSTA GÖNDERME (javax.mail)
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")
+
+    // HILT DI
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
 
     // TEST
     testImplementation(libs.junit)

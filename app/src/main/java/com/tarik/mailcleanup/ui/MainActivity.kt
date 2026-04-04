@@ -18,9 +18,11 @@ import com.google.android.gms.common.api.Scope
 import com.google.api.services.gmail.GmailScopes
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.ActivityMainBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding

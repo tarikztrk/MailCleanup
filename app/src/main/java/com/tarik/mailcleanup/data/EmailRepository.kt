@@ -14,6 +14,10 @@ import com.google.api.client.util.Base64
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import com.google.api.services.gmail.model.Message
+import com.tarik.mailcleanup.domain.model.Subscription
+import com.tarik.mailcleanup.domain.model.UnsubscribeAction
+import com.tarik.mailcleanup.domain.repository.SubscriptionRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -28,18 +32,15 @@ import java.util.regex.Pattern
 import javax.mail.Session
 import javax.mail.internet.InternetAddress
 import javax.mail.internet.MimeMessage
+import javax.inject.Inject
 
-sealed class UnsubscribeAction {
-    data class MailTo(val recipient: String, val subject: String?) : UnsubscribeAction()
-    data class Http(val url: String) : UnsubscribeAction()
-    object NotFound : UnsubscribeAction()
-}
-
-class EmailRepository(private val context: Context) {
+class EmailRepository @Inject constructor(
+    @ApplicationContext private val context: Context
+) : SubscriptionRepository {
 
     private val processedDao = AppDatabase.getDatabase(context).processedSubscriptionDao()
 
-    suspend fun getSubscriptions(
+    override suspend fun getSubscriptions(
         account: GoogleSignInAccount, 
         startDate: Calendar, 
         endDate: Calendar
@@ -163,7 +164,7 @@ class EmailRepository(private val context: Context) {
         }
     }
 
-    suspend fun unsubscribeAndClean(
+    override suspend fun unsubscribeAndClean(
         account: GoogleSignInAccount,
         subscription: Subscription,
         cleanEmails: Boolean
@@ -208,7 +209,7 @@ class EmailRepository(private val context: Context) {
         }
     }
 
-    suspend fun keepSubscription(subscription: Subscription): Boolean {
+    override suspend fun keepSubscription(subscription: Subscription): Boolean {
         return withContext(Dispatchers.IO) {
             try {
                 val record = ProcessedSubscription(
@@ -228,7 +229,7 @@ class EmailRepository(private val context: Context) {
 
     // --- YENİ FONKSİYONLAR: GERİ AL İŞLEMİ İÇİN ---
     
-    suspend fun deleteProcessedSubscription(email: String) {
+    override suspend fun deleteProcessedSubscription(email: String) {
         withContext(Dispatchers.IO) {
             processedDao.deleteByEmail(email)
             Log.d("EmailRepository", "$email veritabanından silindi (Geri Al).")
@@ -236,7 +237,7 @@ class EmailRepository(private val context: Context) {
     }
 
     // `keepSubscription`'ın tersi.
-    suspend fun unkeepSubscription(subscription: Subscription) {
+    override suspend fun unkeepSubscription(subscription: Subscription) {
         deleteProcessedSubscription(subscription.senderEmail)
     }
 

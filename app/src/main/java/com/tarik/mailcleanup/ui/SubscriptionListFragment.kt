@@ -28,13 +28,15 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
-import com.tarik.mailcleanup.data.Subscription
-import com.tarik.mailcleanup.data.UnsubscribeAction
+import com.tarik.mailcleanup.domain.model.Subscription
+import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class SubscriptionListFragment : Fragment() {
 
     private var _binding: FragmentSubscriptionListBinding? = null
