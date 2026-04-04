@@ -81,20 +81,20 @@ class SubscriptionAdapter(
                 longClickListener(subscription)
             }
 
-            if (!isSelectionMode()) {
-                binding.unsubscribeButton.setOnClickListener {
+            binding.unsubscribeButton.setOnClickListener {
+                if (!isSelectionMode()) {
                     onUnsubscribeClicked?.invoke(subscription)
                 }
-                binding.unsubscribeIconButton.setOnClickListener {
+            }
+            binding.unsubscribeIconButton.setOnClickListener {
+                if (!isSelectionMode()) {
                     onUnsubscribeClicked?.invoke(subscription)
                 }
-                binding.keepButton.setOnClickListener {
+            }
+            binding.keepButton.setOnClickListener {
+                if (!isSelectionMode()) {
                     onKeepClicked?.invoke(subscription)
                 }
-            } else {
-                binding.unsubscribeButton.setOnClickListener(null)
-                binding.unsubscribeIconButton.setOnClickListener(null)
-                binding.keepButton.setOnClickListener(null)
             }
         }
     }
@@ -117,6 +117,13 @@ class SubscriptionAdapter(
 
         previousProcessingEmail?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
         email?.let { findPositionByEmail(it)?.let { pos -> notifyItemChanged(pos) } }
+    }
+
+    fun notifySelectionChanged(previousSelectedEmails: Set<String>, currentSelectedEmails: Set<String>) {
+        val changed = (previousSelectedEmails + currentSelectedEmails) - (previousSelectedEmails intersect currentSelectedEmails)
+        changed.forEach { email ->
+            findPositionByEmail(email)?.let { pos -> notifyItemChanged(pos) }
+        }
     }
 
     private fun findPositionByEmail(email: String): Int? {

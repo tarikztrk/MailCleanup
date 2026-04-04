@@ -48,6 +48,7 @@ class SubscriptionListFragment : Fragment() {
 
     private var hasShownAllLoadedMessage = false
     private var actionMode: ActionMode? = null
+    private var lastSelectedEmails: Set<String> = emptySet()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSubscriptionListBinding.inflate(inflater, container, false)
@@ -234,7 +235,11 @@ class SubscriptionListFragment : Fragment() {
                 launch {
                     viewModel.uiState.collect { state ->
                         subscriptionAdapter.setProcessingState(state.processingEmail)
-                        subscriptionAdapter.notifyDataSetChanged()
+                        val currentSelectedEmails = state.selectedItems.map { it.senderEmail }.toSet()
+                        if (currentSelectedEmails != lastSelectedEmails) {
+                            subscriptionAdapter.notifySelectionChanged(lastSelectedEmails, currentSelectedEmails)
+                            lastSelectedEmails = currentSelectedEmails
+                        }
 
                         if (state.scanStatus is ScanUiStatus.InProgress) {
                             binding.emptyStateLayout.visibility = View.GONE
@@ -327,6 +332,7 @@ class SubscriptionListFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        lastSelectedEmails = emptySet()
         _binding = null
     }
 }
