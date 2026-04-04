@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Digital Curator - Active Subscriptions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#ffffff",
+                    "tertiary": "#940010",
+                    "surface-container-highest": "#e1e3e4",
+                    "primary-container": "#0056d2",
+                    "primary": "#0040a1",
+                    "on-surface": "#191c1d",
+                    "primary-fixed-dim": "#b2c5ff",
+                    "on-tertiary-container": "#ffcdc8",
+                    "on-error-container": "#93000a",
+                    "surface-tint": "#0056d2",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed": "#cbe7f5",
+                    "on-primary": "#ffffff",
+                    "on-secondary-container": "#4e6874",
+                    "surface-container-high": "#e7e8e9",
+                    "on-background": "#191c1d",
+                    "surface-bright": "#f8f9fa",
+                    "surface-variant": "#e1e3e4",
+                    "outline": "#737785",
+                    "tertiary-container": "#ba1b20",
+                    "outline-variant": "#c3c6d6",
+                    "on-primary-fixed": "#001847",
+                    "on-surface-variant": "#424654",
+                    "error": "#ba1a1a",
+                    "secondary-fixed-dim": "#afcbd8",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#cbe7f5",
+                    "background": "#f8f9fa",
+                    "surface-container-low": "#f3f4f5",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-tertiary-fixed-variant": "#930010",
+                    "tertiary-fixed": "#ffdad6",
+                    "on-primary-fixed-variant": "#0040a1",
+                    "inverse-primary": "#b2c5ff",
+                    "surface-container": "#edeeef",
+                    "on-secondary-fixed-variant": "#304a55",
+                    "surface-dim": "#d9dadb",
+                    "on-primary-container": "#ccd8ff",
+                    "primary-fixed": "#dae2ff",
+                    "on-secondary-fixed": "#021f29",
+                    "surface": "#f8f9fa",
+                    "secondary": "#48626e",
+                    "on-tertiary-fixed": "#410003",
+                    "inverse-surface": "#2e3132",
+                    "tertiary-fixed-dim": "#ffb3ac"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .skeleton-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body text-on-surface antialiased">
+<!-- TopAppBar Shell -->
+<header class="w-full sticky top-0 z-50 bg-[#f8f9fa] dark:bg-slate-950">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-slate-200/50 transition-colors scale-95 active:opacity-80 transition-all">
+<span class="material-symbols-outlined text-[#0056D2] dark:text-blue-400">menu</span>
+</button>
+<h1 class="font-manrope tracking-tight font-bold text-lg text-xl font-bold text-[#191c1d] dark:text-slate-100">Digital Curator</h1>
+</div>
+<div class="h-10 w-10 rounded-full bg-surface-container-high skeleton-pulse"></div>
+</div>
+</header>
+<main class="max-w-screen-xl mx-auto px-6 py-8 pb-32">
+<!-- Dashboard Header / Hero Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-12">
+<!-- Weekly Inflow Large Stat Skeleton -->
+<div class="md:col-span-8 bg-surface-container-low rounded-xl p-8 flex flex-col justify-between min-h-[220px]">
+<div>
+<div class="h-4 w-32 bg-surface-container-highest rounded-full skeleton-pulse mb-4"></div>
+<div class="flex items-baseline gap-4">
+<div class="h-16 w-24 bg-surface-container-highest rounded-xl skeleton-pulse"></div>
+<div class="h-6 w-16 bg-primary-fixed/30 rounded-full skeleton-pulse"></div>
+</div>
+</div>
+<div class="flex gap-2">
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full w-2/3 bg-primary/20 rounded-full skeleton-pulse"></div>
+</div>
+</div>
+</div>
+<!-- Side Cards Grid -->
+<div class="md:col-span-4 flex flex-col gap-6">
+<!-- Smart Filters Card Skeleton -->
+<div class="bg-surface-container-lowest rounded-xl p-6 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 bg-secondary-container/50 rounded-xl skeleton-pulse"></div>
+<div class="space-y-2">
+<div class="h-4 w-24 bg-surface-container-highest rounded-full skeleton-pulse"></div>
+<div class="h-3 w-16 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+</div>
+<div class="h-6 w-6 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+<!-- Saved Minutes Card Skeleton -->
+<div class="bg-surface-container-lowest rounded-xl p-6 flex items-center justify-between shadow-sm border border-outline-variant/15">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 bg-primary-container/10 rounded-xl skeleton-pulse"></div>
+<div class="space-y-2">
+<div class="h-4 w-28 bg-surface-container-highest rounded-full skeleton-pulse"></div>
+<div class="h-3 w-20 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+</div>
+<div class="h-6 w-6 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+</div>
+</div>
+<!-- Filter Chips Skeleton -->
+<div class="flex items-center gap-3 mb-10 overflow-x-auto pb-2 no-scrollbar">
+<div class="h-10 w-24 bg-primary/10 rounded-full flex-shrink-0 skeleton-pulse"></div>
+<div class="h-10 w-32 bg-surface-container-high rounded-full flex-shrink-0 skeleton-pulse"></div>
+<div class="h-10 w-28 bg-surface-container-high rounded-full flex-shrink-0 skeleton-pulse"></div>
+<div class="h-10 w-36 bg-surface-container-high rounded-full flex-shrink-0 skeleton-pulse"></div>
+<div class="h-10 w-24 bg-surface-container-high rounded-full flex-shrink-0 skeleton-pulse"></div>
+</div>
+<!-- Active Subscriptions List Section -->
+<div class="space-y-4">
+<div class="flex items-center justify-between mb-2">
+<div class="h-6 w-48 bg-surface-container-highest rounded-full skeleton-pulse"></div>
+<div class="h-4 w-24 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+<!-- Subscription Item Skeletons (4-5 items) -->
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between group transition-all">
+<div class="flex items-center gap-6">
+<div class="h-14 w-14 bg-surface-container-low rounded-xl skeleton-pulse flex items-center justify-center">
+<div class="h-8 w-8 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="space-y-3">
+<div class="h-5 w-48 bg-surface-container-highest rounded-full skeleton-pulse"></div>
+<div class="h-4 w-64 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between group transition-all">
+<div class="flex items-center gap-6">
+<div class="h-14 w-14 bg-surface-container-low rounded-xl skeleton-pulse flex items-center justify-center">
+<div class="h-8 w-8 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="space-y-3">
+<div class="h-5 w-40 bg-surface-container-highest rounded-full skeleton-pulse"></div>
+<div class="h-4 w-56 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between group transition-all">
+<div class="flex items-center gap-6">
+<div class="h-14 w-14 bg-surface-container-low rounded-xl skeleton-pulse flex items-center justify-center">
+<div class="h-8 w-8 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="space-y-3">
+<div class="h-5 w-52 bg-surface-container-highest rounded-full skeleton-pulse"></div>
+<div class="h-4 w-72 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between group transition-all">
+<div class="flex items-center gap-6">
+<div class="h-14 w-14 bg-surface-container-low rounded-xl skeleton-pulse flex items-center justify-center">
+<div class="h-8 w-8 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="space-y-3">
+<div class="h-5 w-36 bg-surface-container-highest rounded-full skeleton-pulse"></div>
+<div class="h-4 w-48 bg-surface-container-high rounded-full skeleton-pulse"></div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+<div class="h-8 w-8 bg-surface-container-low rounded-lg skeleton-pulse"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pt-2 pb-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl z-50 border-t border-[#c3c6d6]/15 shadow-[0_-4px_20px_rgba(25,28,29,0.04)]">
+<!-- Active Tab: Curate -->
+<a class="flex flex-col items-center justify-center bg-[#0056D2]/10 text-[#0056D2] dark:text-blue-300 rounded-2xl px-5 py-1.5 tap-highlight-transparent active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-inter text-[11px] font-medium uppercase tracking-wider">Curate</span>
+</a>
+<!-- Inactive Tab: Insights -->
+<a class="flex flex-col items-center justify-center text-[#48626e] dark:text-slate-500 px-5 py-1.5 hover:text-[#0056D2] dark:hover:text-blue-200 tap-highlight-transparent active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-inter text-[11px] font-medium uppercase tracking-wider">Insights</span>
+</a>
+<!-- Inactive Tab: Archives -->
+<a class="flex flex-col items-center justify-center text-[#48626e] dark:text-slate-500 px-5 py-1.5 hover:text-[#0056D2] dark:hover:text-blue-200 tap-highlight-transparent active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-inter text-[11px] font-medium uppercase tracking-wider">Archives</span>
+</a>
+<!-- Inactive Tab: Settings -->
+<a class="flex flex-col items-center justify-center text-[#48626e] dark:text-slate-500 px-5 py-1.5 hover:text-[#0056D2] dark:hover:text-blue-200 tap-highlight-transparent active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-inter text-[11px] font-medium uppercase tracking-wider">Settings</span>
+</a>
+</nav>
+</body></html>

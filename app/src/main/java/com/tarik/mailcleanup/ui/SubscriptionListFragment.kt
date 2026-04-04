@@ -5,17 +5,16 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
 import android.view.MenuItem
+import android.widget.EditText
+import android.view.animation.AlphaAnimation
+import android.view.animation.LinearInterpolator
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
-import androidx.appcompat.widget.SearchView
+import androidx.appcompat.widget.PopupMenu
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.core.view.MenuHost
-import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -40,6 +39,10 @@ import kotlinx.coroutines.launch
  */
 @AndroidEntryPoint
 class SubscriptionListFragment : Fragment() {
+    companion object {
+        private const val SORT_MENU_MOST_FREQUENT = 1001
+        private const val SORT_MENU_A_TO_Z = 1002
+    }
 
     private var _binding: FragmentSubscriptionListBinding? = null
     private val binding get() = _binding!!
@@ -51,6 +54,7 @@ class SubscriptionListFragment : Fragment() {
     private var hasShownAllLoadedMessage = false
     private var actionMode: ActionMode? = null
     private var lastSelectedEmails: Set<String> = emptySet()
+    private var isSkeletonAnimating = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSubscriptionListBinding.inflate(inflater, container, false)
@@ -61,17 +65,17 @@ class SubscriptionListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         currentAccount = viewModel.currentMailAccount()
         setupRecyclerView()
-        setupMenu()
+        setupDashboardControls()
         observeViewModel()
     }
 
     private val actionModeCallback = object : ActionMode.Callback {
-        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+        override fun onCreateActionMode(mode: ActionMode, menu: android.view.Menu): Boolean {
             mode.menuInflater.inflate(R.menu.menu_selection, menu)
             return true
         }
 
-        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
+        override fun onPrepareActionMode(mode: ActionMode, menu: android.view.Menu): Boolean = false
 
         override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
             val selectedCount = viewModel.getSelectedItemsCount()
@@ -95,14 +99,8 @@ class SubscriptionListFragment : Fragment() {
                     return true
                 }
 
-                R.id.action_keep -> {
-                    viewModel.bulkKeepSelected()
-                    mode.finish()
-                    return true
-                }
-
                 R.id.action_select_all -> {
-                    viewModel.selectAll()
+                    viewModel.selectAll(subscriptionAdapter.snapshot().items)
                     return true
                 }
 
@@ -133,44 +131,114 @@ class SubscriptionListFragment : Fragment() {
             isSelected = { subscription -> viewModel.uiState.value.selectedItems.contains(subscription) },
             onUnsubscribeClicked = { subscription ->
                 showUnsubscribeConfirmationDialog(subscription)
-            },
-            onKeepClicked = { subscription ->
-                viewModel.keepSubscription(subscription)
             }
         )
 
         binding.subscriptionsRecyclerView.adapter = subscriptionAdapter
-
-        subscriptionAdapter.addOnPagesUpdatedListener {
-            // "Select all" için ekranda görünen güncel elemanları ViewModel'e bildiriyoruz.
-            val visible = mutableListOf<Subscription>()
-            for (index in 0 until subscriptionAdapter.itemCount) {
-                subscriptionAdapter.peek(index)?.let { visible.add(it) }
-            }
-            viewModel.updateVisibleSubscriptions(visible)
-        }
     }
 
-    private fun setupMenu() {
-        val menuHost: MenuHost = requireActivity()
-        menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(R.menu.main_menu, menu)
-                val searchItem = menu.findItem(R.id.action_search)
-                val searchView = searchItem.actionView as SearchView
+    private fun setupDashboardControls() {
+        binding.searchButton.setOnClickListener {
+            showSearchDialog()
+        }
 
-                searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                    override fun onQueryTextSubmit(query: String?): Boolean = true
+        binding.sortControl.setOnClickListener { anchor ->
+            showSortMenu(anchor)
+        }
 
-                    override fun onQueryTextChange(newText: String?): Boolean {
-                        viewModel.setSearchQuery(newText.orEmpty())
-                        return true
-                    }
-                })
+        binding.filterAllChip.setOnClickListener {
+            viewModel.setFilter(SubscriptionFilter.ALL)
+        }
+        binding.filterNewslettersChip.setOnClickListener {
+            viewModel.setFilter(SubscriptionFilter.NEWSLETTERS)
+        }
+        binding.filterPromotionsChip.setOnClickListener {
+            viewModel.setFilter(SubscriptionFilter.PROMOTIONS)
+        }
+
+        binding.bottomNavBar.getChildAt(0)?.setOnClickListener {
+            showSnackbar(getString(R.string.nav_home_selected))
+        }
+        binding.bottomNavBar.getChildAt(1)?.setOnClickListener {
+            showSnackbar(getString(R.string.nav_activity_soon))
+        }
+        binding.bottomNavBar.getChildAt(2)?.setOnClickListener {
+            showSnackbar(getString(R.string.nav_settings_soon))
+        }
+
+    }
+
+    private fun showSearchDialog() {
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.search_hint)
+            setText(viewModel.uiState.value.searchQuery)
+            setSelection(text.length)
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.search_cd))
+            .setView(input)
+            .setPositiveButton(getString(R.string.search_apply)) { _, _ ->
+                viewModel.setSearchQuery(input.text?.toString().orEmpty())
             }
+            .setNeutralButton(getString(R.string.search_clear)) { _, _ ->
+                viewModel.setSearchQuery("")
+            }
+            .setNegativeButton(getString(R.string.dialog_option_cancel), null)
+            .show()
+    }
 
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean = true
-        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    private fun showSortMenu(anchor: View) {
+        val popupMenu = PopupMenu(requireContext(), anchor)
+        popupMenu.menu.add(0, SORT_MENU_MOST_FREQUENT, 0, getString(R.string.sort_by_most_frequent))
+        popupMenu.menu.add(0, SORT_MENU_A_TO_Z, 1, getString(R.string.sort_by_a_to_z))
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                SORT_MENU_MOST_FREQUENT -> viewModel.setSort(SubscriptionSort.MOST_FREQUENT)
+                SORT_MENU_A_TO_Z -> viewModel.setSort(SubscriptionSort.A_TO_Z)
+            }
+            true
+        }
+        popupMenu.show()
+    }
+
+    private fun renderFilterChips(filter: SubscriptionFilter) {
+        binding.filterAllChip.setTextColor(
+            resources.getColor(
+                if (filter == SubscriptionFilter.ALL) android.R.color.white else R.color.secondary_text,
+                null
+            )
+        )
+        binding.filterNewslettersChip.setTextColor(
+            resources.getColor(
+                if (filter == SubscriptionFilter.NEWSLETTERS) android.R.color.white else R.color.secondary_text,
+                null
+            )
+        )
+        binding.filterPromotionsChip.setTextColor(
+            resources.getColor(
+                if (filter == SubscriptionFilter.PROMOTIONS) android.R.color.white else R.color.secondary_text,
+                null
+            )
+        )
+
+        binding.filterAllChip.setBackgroundResource(
+            if (filter == SubscriptionFilter.ALL) R.drawable.bg_filter_chip_active_selector else R.drawable.bg_filter_chip_inactive_selector
+        )
+        binding.filterNewslettersChip.setBackgroundResource(
+            if (filter == SubscriptionFilter.NEWSLETTERS) R.drawable.bg_filter_chip_active_selector else R.drawable.bg_filter_chip_inactive_selector
+        )
+        binding.filterPromotionsChip.setBackgroundResource(
+            if (filter == SubscriptionFilter.PROMOTIONS) R.drawable.bg_filter_chip_active_selector else R.drawable.bg_filter_chip_inactive_selector
+        )
+    }
+
+    private fun renderSort(sort: SubscriptionSort) {
+        val text = when (sort) {
+            SubscriptionSort.MOST_FREQUENT -> getString(R.string.sort_by_most_frequent)
+            SubscriptionSort.A_TO_Z -> getString(R.string.sort_by_a_to_z)
+        }
+        binding.sortTextView.text = text
     }
 
     private fun showUnsubscribeConfirmationDialog(subscription: Subscription) {
@@ -205,6 +273,9 @@ class SubscriptionListFragment : Fragment() {
                             (loadState.append as LoadState.NotLoading).endOfPaginationReached
 
                         binding.loadMoreProgressBar.visibility = if (isAppending) View.VISIBLE else View.GONE
+                        val showSkeleton = isRefreshing && subscriptionAdapter.itemCount == 0
+                        binding.initialLoadingOverlay.visibility = if (showSkeleton) View.VISIBLE else View.GONE
+                        if (showSkeleton) startSkeletonPulse() else stopSkeletonPulse()
                         checkEmptyState(isEmpty)
 
                         if (endReached &&
@@ -251,6 +322,8 @@ class SubscriptionListFragment : Fragment() {
                             binding.emptyStateLayout.visibility = View.GONE
                             binding.subscriptionsRecyclerView.visibility = View.VISIBLE
                         }
+                        renderFilterChips(state.selectedFilter)
+                        renderSort(state.selectedSort)
 
                         if (state.isSelectionMode && actionMode == null) {
                             actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
@@ -339,7 +412,26 @@ class SubscriptionListFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        stopSkeletonPulse()
         lastSelectedEmails = emptySet()
         _binding = null
+    }
+
+    private fun startSkeletonPulse() {
+        if (isSkeletonAnimating) return
+        val animation = AlphaAnimation(1f, 0.55f).apply {
+            duration = 900
+            repeatMode = AlphaAnimation.REVERSE
+            repeatCount = AlphaAnimation.INFINITE
+            interpolator = LinearInterpolator()
+        }
+        binding.initialLoadingOverlay.startAnimation(animation)
+        isSkeletonAnimating = true
+    }
+
+    private fun stopSkeletonPulse() {
+        if (!isSkeletonAnimating || _binding == null) return
+        binding.initialLoadingOverlay.clearAnimation()
+        isSkeletonAnimating = false
     }
 }

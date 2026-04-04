@@ -42,6 +42,7 @@
     <string name="saved_minutes_count">32</string>
     <string name="saved_minutes_label">Saved Minutes</string>
     <string name="sort_by_most_frequent">Sort by: Most Frequent</string>
+    <string name="sort_by_a_to_z">Sort by: A-Z</string>
     <string name="filter_all_active">All Active</string>
     <string name="filter_newsletters">Newsletters</string>
     <string name="filter_promotions">Promotions</string>
@@ -79,7 +80,13 @@
     
     <!-- Search -->
     <string name="search_hint">Abonelik ara…</string>
+    <string name="search_apply">Uygula</string>
+    <string name="search_clear">Temizle</string>
     <string name="clear_search">Aramayı temizle</string>
+    <string name="nav_home_selected">Ana sayfadasın.</string>
+    <string name="nav_activity_soon">Activity ekranı yakında.</string>
+    <string name="nav_settings_soon">Settings ekranı yakında.</string>
+    <string name="fab_add_subscription_soon">Yeni işlem ekleme yakında.</string>
     
     <!-- Bulk actions -->
     <string name="bulk_action_result_kept">%1$d abonelik korundu.</string>

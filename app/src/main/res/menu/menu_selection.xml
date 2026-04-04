@@ -7,11 +7,6 @@
         android:icon="@drawable/ic_email"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_keep"
-        android:title="Toplu Koru"
-        android:icon="@drawable/ic_keep_outline"
-        app:showAsAction="ifRoom" />
-    <item
         android:id="@+id/action_select_all"
         android:title="Tümünü Seç"
         app:showAsAction="never" />

@@ -24,8 +24,7 @@ class SubscriptionAdapter(
     private val longClickListener: (Subscription) -> Boolean,
     private val isSelectionMode: () -> Boolean,
     private val isSelected: (Subscription) -> Boolean,
-    private val onUnsubscribeClicked: ((Subscription) -> Unit)? = null,
-    private val onKeepClicked: ((Subscription) -> Unit)? = null
+    private val onUnsubscribeClicked: ((Subscription) -> Unit)? = null
 ) : PagingDataAdapter<Subscription, SubscriptionAdapter.SubscriptionViewHolder>(SubscriptionDiffCallback()) {
 
     private var processingEmail: String? = null
@@ -94,11 +93,6 @@ class SubscriptionAdapter(
             binding.unsubscribeIconButton.setOnClickListener {
                 if (!isSelectionMode()) {
                     onUnsubscribeClicked?.invoke(subscription)
-                }
-            }
-            binding.keepButton.setOnClickListener {
-                if (!isSelectionMode()) {
-                    onKeepClicked?.invoke(subscription)
                 }
             }
         }

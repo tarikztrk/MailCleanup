@@ -1,6 +1,5 @@
 package com.tarik.mailcleanup.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -16,7 +15,6 @@ import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
-import com.tarik.mailcleanup.domain.usecase.KeepSubscriptionUseCase
 import com.tarik.mailcleanup.domain.usecase.UnsubscribeAndCleanUseCase
 import com.tarik.mailcleanup.ui.paging.SubscriptionPagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +34,17 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+enum class SubscriptionFilter {
+    ALL,
+    NEWSLETTERS,
+    PROMOTIONS
+}
+
+enum class SubscriptionSort {
+    MOST_FREQUENT,
+    A_TO_Z
+}
 
 /**
  * Sign-in buton durumunu ayrı temsil eder.
@@ -69,7 +78,8 @@ data class MainUiState(
     val selectedItems: Set<Subscription> = emptySet(),
     val hiddenEmails: Set<String> = emptySet(),
     val currentAccount: MailAccount? = null,
-    val visibleSubscriptions: List<Subscription> = emptyList()
+    val selectedFilter: SubscriptionFilter = SubscriptionFilter.ALL,
+    val selectedSort: SubscriptionSort = SubscriptionSort.MOST_FREQUENT
 ) {
     val isSelectionMode: Boolean get() = selectedItems.isNotEmpty()
 }
@@ -89,8 +99,7 @@ sealed interface MainUiEvent {
 class MainViewModel @Inject constructor(
     private val stringProvider: StringProvider,
     private val getSubscriptionsUseCase: GetSubscriptionsUseCase,
-    private val unsubscribeAndCleanUseCase: UnsubscribeAndCleanUseCase,
-    private val keepSubscriptionUseCase: KeepSubscriptionUseCase
+    private val unsubscribeAndCleanUseCase: UnsubscribeAndCleanUseCase
 ) : ViewModel() {
 
     // Ekranın ana state kaynağı.
@@ -107,12 +116,17 @@ class MainViewModel @Inject constructor(
         .filterNotNull()
 
     private val filterFlow = uiState
-        .map { it.searchQuery to it.hiddenEmails }
+        .map { Triple(it.searchQuery, it.hiddenEmails, it.selectedFilter) }
+        .distinctUntilChanged()
+
+    private val sortFlow = uiState
+        .map { it.selectedSort }
         .distinctUntilChanged()
 
     val pagedSubscriptions: Flow<PagingData<Subscription>> = combine(
-        accountFlow
+        combine(accountFlow, sortFlow) { account, sort -> account to sort }
             .flatMapLatest { account ->
+                val (mailAccount, selectedSort) = account
                 Pager(
                     config = PagingConfig(
                         pageSize = 30,
@@ -120,7 +134,7 @@ class MainViewModel @Inject constructor(
                         enablePlaceholders = false
                     ),
                     pagingSourceFactory = {
-                        SubscriptionPagingSource(account, getSubscriptionsUseCase)
+                        SubscriptionPagingSource(mailAccount, selectedSort, getSubscriptionsUseCase)
                     }
                 ).flow
             }
@@ -130,12 +144,19 @@ class MainViewModel @Inject constructor(
         // Paging stream üstünde client-side arama + gizleme filtresi uygulanır.
         val searchQuery = filterState.first
         val hiddenEmails = filterState.second
+        val selectedFilter = filterState.third
         pagingData.filter { subscription ->
             val matchesQuery = searchQuery.isBlank() ||
                 subscription.senderName.contains(searchQuery, ignoreCase = true) ||
                 subscription.senderEmail.contains(searchQuery, ignoreCase = true)
 
-            matchesQuery && !hiddenEmails.contains(subscription.senderEmail)
+            val matchesCategory = when (selectedFilter) {
+                SubscriptionFilter.ALL -> true
+                SubscriptionFilter.NEWSLETTERS -> looksLikeNewsletter(subscription)
+                SubscriptionFilter.PROMOTIONS -> looksLikePromotion(subscription)
+            }
+
+            matchesQuery && matchesCategory && !hiddenEmails.contains(subscription.senderEmail)
         }
     }
 
@@ -146,8 +167,12 @@ class MainViewModel @Inject constructor(
         _uiState.update { it.copy(searchQuery = query) }
     }
 
-    fun updateVisibleSubscriptions(items: List<Subscription>) {
-        _uiState.update { it.copy(visibleSubscriptions = items) }
+    fun setFilter(filter: SubscriptionFilter) {
+        _uiState.update { it.copy(selectedFilter = filter) }
+    }
+
+    fun setSort(sort: SubscriptionSort) {
+        _uiState.update { it.copy(selectedSort = sort) }
     }
 
     fun currentMailAccount(): MailAccount? = _uiState.value.currentAccount
@@ -179,7 +204,8 @@ class MainViewModel @Inject constructor(
                 hiddenEmails = emptySet(),
                 searchQuery = "",
                 currentAccount = account,
-                visibleSubscriptions = emptyList()
+                selectedFilter = SubscriptionFilter.ALL,
+                selectedSort = SubscriptionSort.MOST_FREQUENT
             )
         }
 
@@ -227,33 +253,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun keepSubscription(subscription: Subscription) {
-        // Keep akışı da undo davranışıyla aynı şablonu kullanır.
-        finalizePendingAction()
-
-        lastRemovedSubscription = subscription
-        _uiState.update {
-            it.copy(
-                hiddenEmails = it.hiddenEmails + subscription.senderEmail,
-                selectedItems = it.selectedItems - subscription
-            )
-        }
-
-        pendingJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
-            when (val result = keepSubscriptionUseCase(subscription)) {
-                is DomainResult.Success -> Unit
-                is DomainResult.Error -> {
-                    undoLastAction(informUser = false)
-                    emitEvent(MainUiEvent.ShowError("'${subscription.senderEmail}' icin hata: ${domainErrorToMessage(result.error)}"))
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            emitEvent(MainUiEvent.ShowUndo(stringProvider.get(R.string.snackbar_kept, subscription.senderEmail)))
-        }
-    }
-
     fun undoLastAction(informUser: Boolean = true) {
         pendingJob?.cancel()
         pendingJob = null
@@ -289,31 +288,11 @@ class MainViewModel @Inject constructor(
         _uiState.update { it.copy(selectedItems = emptySet()) }
     }
 
-    fun selectAll() {
-        _uiState.update { it.copy(selectedItems = it.visibleSubscriptions.toSet()) }
+    fun selectAll(items: List<Subscription>) {
+        _uiState.update { it.copy(selectedItems = items.toSet()) }
     }
 
     fun getSelectedItemsCount(): Int = _uiState.value.selectedItems.size
-
-    fun bulkKeepSelected() {
-        val itemsToKeep = _uiState.value.selectedItems
-        if (itemsToKeep.isEmpty()) return
-
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    hiddenEmails = it.hiddenEmails + itemsToKeep.map { item -> item.senderEmail }.toSet(),
-                    selectedItems = emptySet()
-                )
-            }
-
-            var successCount = 0
-            itemsToKeep.forEach {
-                if (keepSubscriptionUseCase(it) is DomainResult.Success) successCount++
-            }
-            emitEvent(MainUiEvent.ShowMessage(stringProvider.get(R.string.bulk_action_result_kept, successCount)))
-        }
-    }
 
     fun bulkUnsubscribeSelected(account: MailAccount?, cleanEmails: Boolean) {
         if (account == null) return
@@ -357,5 +336,17 @@ class MainViewModel @Inject constructor(
 
     private suspend fun emitEvent(event: MainUiEvent) {
         _uiEvent.send(event)
+    }
+
+    private fun looksLikeNewsletter(subscription: Subscription): Boolean {
+        val text = "${subscription.senderName} ${subscription.senderEmail}".lowercase()
+        val keywords = listOf("newsletter", "digest", "substack", "medium", "daily", "weekly", "brief")
+        return keywords.any { keyword -> text.contains(keyword) }
+    }
+
+    private fun looksLikePromotion(subscription: Subscription): Boolean {
+        val text = "${subscription.senderName} ${subscription.senderEmail}".lowercase()
+        val keywords = listOf("promo", "sale", "deals", "offer", "discount", "campaign", "shop")
+        return keywords.any { keyword -> text.contains(keyword) }
     }
 }

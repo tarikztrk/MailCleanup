@@ -14,7 +14,10 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 /**
@@ -25,6 +28,30 @@ class EmailRepository @Inject constructor(
     private val remoteDataSource: GmailRemoteDataSource,
     private val localDataSource: ProcessedSubscriptionLocalDataSource
 ) : SubscriptionRepository {
+    private data class SubscriptionWindowKey(
+        val accountName: String,
+        val startDayKey: String,
+        val endDayKey: String
+    )
+
+    private data class CachedSubscriptions(
+        val cachedAt: Long,
+        val items: List<Subscription>
+    )
+
+    private val windowCache = ConcurrentHashMap<SubscriptionWindowKey, CachedSubscriptions>()
+    private val cacheTtlMs = 2 * 60 * 1000L // 2 dakika
+    private val dayKeyFormat = SimpleDateFormat("yyyyMMdd", Locale.US)
+
+    private fun now(): Long = System.currentTimeMillis()
+
+    private fun cacheKey(account: MailAccount, startDate: Calendar, endDate: Calendar): SubscriptionWindowKey {
+        return SubscriptionWindowKey(
+            accountName = account.accountName,
+            startDayKey = dayKeyFormat.format(startDate.time),
+            endDayKey = dayKeyFormat.format(endDate.time)
+        )
+    }
 
     override suspend fun getSubscriptions(
         account: MailAccount,
@@ -32,8 +59,16 @@ class EmailRepository @Inject constructor(
         endDate: Calendar
     ): DomainResult<List<Subscription>> {
         return try {
+            val key = cacheKey(account, startDate, endDate)
+            val cached = windowCache[key]
+            if (cached != null && now() - cached.cachedAt <= cacheTtlMs) {
+                return DomainResult.Success(cached.items)
+            }
+
             val processed = localDataSource.getProcessedMapByEmail()
-            DomainResult.Success(remoteDataSource.fetchSubscriptions(account, startDate, endDate, processed))
+            val fetched = remoteDataSource.fetchSubscriptions(account, startDate, endDate, processed)
+            windowCache[key] = CachedSubscriptions(cachedAt = now(), items = fetched)
+            DomainResult.Success(fetched)
         } catch (e: Exception) {
             Log.e("EmailRepository", "Abonelikler alınırken genel hata", e)
             DomainResult.Error(classifyError(e))

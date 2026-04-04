@@ -6,6 +6,7 @@ import com.tarik.mailcleanup.domain.model.DomainResult
 import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
+import com.tarik.mailcleanup.ui.SubscriptionSort
 import java.util.Calendar
 
 /**
@@ -14,6 +15,7 @@ import java.util.Calendar
  */
 class SubscriptionPagingSource(
     private val account: MailAccount,
+    private val sort: SubscriptionSort,
     private val getSubscriptionsUseCase: GetSubscriptionsUseCase
 ) : PagingSource<Int, Subscription>() {
 
@@ -52,11 +54,14 @@ class SubscriptionPagingSource(
                         val uniqueByEmail = result.data
                             .groupBy { it.senderEmail }
                             .map { (_, items) -> items.maxByOrNull { it.emailCount } ?: items.first() }
-                            .sortedByDescending { it.emailCount }
+                        val sorted = when (sort) {
+                            SubscriptionSort.MOST_FREQUENT -> uniqueByEmail.sortedByDescending { it.emailCount }
+                            SubscriptionSort.A_TO_Z -> uniqueByEmail.sortedBy { it.senderName.lowercase() }
+                        }
 
-                        if (uniqueByEmail.isNotEmpty()) {
+                        if (sorted.isNotEmpty()) {
                             return LoadResult.Page(
-                                data = uniqueByEmail,
+                                data = sorted,
                                 prevKey = if (page == 0) null else page - 1,
                                 nextKey = page + 1
                             )

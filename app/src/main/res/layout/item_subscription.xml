@@ -104,6 +104,7 @@
                 android:id="@+id/unsubscribeIconButton"
                 android:layout_width="38dp"
                 android:layout_height="38dp"
+                android:layout_gravity="center_vertical|end"
                 android:background="@drawable/bg_unsubscribe_icon_selector"
                 android:contentDescription="@string/button_unsubscribe"
                 android:padding="9dp"
@@ -114,6 +115,7 @@
                 android:id="@+id/unsubscribeButton"
                 android:layout_width="112dp"
                 android:layout_height="40dp"
+                android:layout_gravity="center_vertical|end"
                 android:background="@drawable/bg_unsubscribe_pill_selector"
                 android:text="@string/unsubscribe_full"
                 android:textAllCaps="false"
@@ -122,12 +124,6 @@
                 android:textStyle="bold"
                 android:visibility="gone"
                 tools:visibility="visible" />
-
-            <View
-                android:id="@+id/keepButton"
-                android:layout_width="1dp"
-                android:layout_height="1dp"
-                android:visibility="gone" />
         </FrameLayout>
 
         <!-- Satır bazında unsubscribe işlemi sürerken gösterilir. -->
