@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -55,7 +57,9 @@ data class MainUiState(
     val searchQuery: String = "",
     val processingEmail: String? = null,
     val selectedItems: Set<Subscription> = emptySet(),
-    val hiddenEmails: Set<String> = emptySet()
+    val hiddenEmails: Set<String> = emptySet(),
+    val currentAccount: MailAccount? = null,
+    val visibleSubscriptions: List<Subscription> = emptyList()
 ) {
     val isSelectionMode: Boolean get() = selectedItems.isNotEmpty()
 }
@@ -82,12 +86,17 @@ class MainViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<MainUiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
-    private val signedInAccount = MutableStateFlow<MailAccount?>(null)
-    private val visibleSubscriptions = MutableStateFlow<List<Subscription>>(emptyList())
+    private val accountFlow = uiState
+        .map { it.currentAccount }
+        .distinctUntilChanged()
+        .filterNotNull()
+
+    private val filterFlow = uiState
+        .map { it.searchQuery to it.hiddenEmails }
+        .distinctUntilChanged()
 
     val pagedSubscriptions: Flow<PagingData<Subscription>> = combine(
-        signedInAccount
-            .filterNotNull()
+        accountFlow
             .flatMapLatest { account ->
                 Pager(
                     config = PagingConfig(
@@ -101,14 +110,16 @@ class MainViewModel @Inject constructor(
                 ).flow
             }
             .cachedIn(viewModelScope),
-        _uiState
-    ) { pagingData, state ->
+        filterFlow
+    ) { pagingData, filterState ->
+        val searchQuery = filterState.first
+        val hiddenEmails = filterState.second
         pagingData.filter { subscription ->
-            val matchesQuery = state.searchQuery.isBlank() ||
-                subscription.senderName.contains(state.searchQuery, ignoreCase = true) ||
-                subscription.senderEmail.contains(state.searchQuery, ignoreCase = true)
+            val matchesQuery = searchQuery.isBlank() ||
+                subscription.senderName.contains(searchQuery, ignoreCase = true) ||
+                subscription.senderEmail.contains(searchQuery, ignoreCase = true)
 
-            matchesQuery && !state.hiddenEmails.contains(subscription.senderEmail)
+            matchesQuery && !hiddenEmails.contains(subscription.senderEmail)
         }
     }
 
@@ -120,10 +131,10 @@ class MainViewModel @Inject constructor(
     }
 
     fun updateVisibleSubscriptions(items: List<Subscription>) {
-        visibleSubscriptions.value = items
+        _uiState.update { it.copy(visibleSubscriptions = items) }
     }
 
-    fun currentMailAccount(): MailAccount? = signedInAccount.value
+    fun currentMailAccount(): MailAccount? = _uiState.value.currentAccount
 
     fun onSignInStarted() {
         _uiState.update { it.copy(signInStatus = SignInUiStatus.InProgress) }
@@ -149,11 +160,12 @@ class MainViewModel @Inject constructor(
                 processingEmail = null,
                 selectedItems = emptySet(),
                 hiddenEmails = emptySet(),
-                searchQuery = ""
+                searchQuery = "",
+                currentAccount = account,
+                visibleSubscriptions = emptyList()
             )
         }
 
-        signedInAccount.value = account
         _uiState.update { it.copy(scanStatus = ScanUiStatus.Success) }
     }
 
@@ -260,7 +272,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun selectAll() {
-        _uiState.update { it.copy(selectedItems = visibleSubscriptions.value.toSet()) }
+        _uiState.update { it.copy(selectedItems = it.visibleSubscriptions.toSet()) }
     }
 
     fun getSelectedItemsCount(): Int = _uiState.value.selectedItems.size
@@ -310,8 +322,6 @@ class MainViewModel @Inject constructor(
         pendingJob?.cancel()
         pendingJob = null
         lastRemovedSubscription = null
-        visibleSubscriptions.value = emptyList()
-        signedInAccount.value = null
         _uiState.update { MainUiState() }
     }
 
