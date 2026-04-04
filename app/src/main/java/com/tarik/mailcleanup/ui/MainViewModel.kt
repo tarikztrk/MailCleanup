@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
@@ -78,37 +79,40 @@ class MainViewModel @Inject constructor(
     private var lastEndDate: Calendar? = null
 
     fun setSearchQuery(query: String) {
-        _uiState.value = _uiState.value.copy(searchQuery = query)
+        _uiState.update { it.copy(searchQuery = query) }
         applyFilter()
     }
 
     fun onSignInStarted() {
-        _uiState.value = _uiState.value.copy(signInStatus = SignInUiStatus.InProgress)
+        _uiState.update { it.copy(signInStatus = SignInUiStatus.InProgress) }
     }
 
     fun onSignInSuccess(displayName: String?) {
-        _uiState.value = _uiState.value.copy(signInStatus = SignInUiStatus.Success)
+        _uiState.update { it.copy(signInStatus = SignInUiStatus.Success) }
     }
 
     fun onSignInFailed(errorMessage: String?) {
-        _uiState.value = _uiState.value.copy(
-            signInStatus = SignInUiStatus.Error(errorMessage ?: getApplication<Application>().getString(R.string.error_generic)),
-            scanStatus = ScanUiStatus.Idle
-        )
+        _uiState.update {
+            it.copy(
+                signInStatus = SignInUiStatus.Error(errorMessage ?: getApplication<Application>().getString(R.string.error_generic)),
+                scanStatus = ScanUiStatus.Idle
+            )
+        }
     }
 
     fun startSubscriptionScan(account: GoogleSignInAccount) {
-        val state = _uiState.value
-        _uiState.value = state.copy(
-            scanStatus = ScanUiStatus.InProgress,
-            processingEmail = null,
-            isLoadingMore = false,
-            isLastPage = false,
-            subscriptions = emptyList(),
-            filteredSubscriptions = emptyList(),
-            selectedItems = emptySet(),
-            searchQuery = ""
-        )
+        _uiState.update {
+            it.copy(
+                scanStatus = ScanUiStatus.InProgress,
+                processingEmail = null,
+                isLoadingMore = false,
+                isLastPage = false,
+                subscriptions = emptyList(),
+                filteredSubscriptions = emptyList(),
+                selectedItems = emptySet(),
+                searchQuery = ""
+            )
+        }
         lastEndDate = null
 
         viewModelScope.launch {
@@ -117,18 +121,22 @@ class MainViewModel @Inject constructor(
                 val subscriptions = getSubscriptionsUseCase(account, startDate, endDate).sortedByDescending { it.emailCount }
                 lastEndDate = startDate
 
-                _uiState.value = _uiState.value.copy(
-                    scanStatus = ScanUiStatus.Success,
-                    subscriptions = subscriptions,
-                    filteredSubscriptions = subscriptions
-                )
+                _uiState.update {
+                    it.copy(
+                        scanStatus = ScanUiStatus.Success,
+                        subscriptions = subscriptions,
+                        filteredSubscriptions = subscriptions
+                    )
+                }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Abonelik tarama hatası", e)
-                _uiState.value = _uiState.value.copy(
-                    scanStatus = ScanUiStatus.Error(getApplication<Application>().getString(R.string.error_generic)),
-                    subscriptions = emptyList(),
-                    filteredSubscriptions = emptyList()
-                )
+                _uiState.update {
+                    it.copy(
+                        scanStatus = ScanUiStatus.Error(getApplication<Application>().getString(R.string.error_generic)),
+                        subscriptions = emptyList(),
+                        filteredSubscriptions = emptyList()
+                    )
+                }
             }
         }
     }
@@ -138,13 +146,13 @@ class MainViewModel @Inject constructor(
         if (current.isLoadingMore || current.isLastPage) return
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val (startDate, endDate) = getNextDateRange()
                 val oneYearAgo = Calendar.getInstance().apply { add(Calendar.YEAR, -1) }
 
                 if (startDate.before(oneYearAgo)) {
-                    _uiState.value = _uiState.value.copy(isLoadingMore = false, isLastPage = true)
+                    _uiState.update { it.copy(isLoadingMore = false, isLastPage = true) }
                     _uiEvent.emit(MainUiEvent.ShowMessage(getApplication<Application>().getString(R.string.snackbar_all_loaded)))
                     return@launch
                 }
@@ -157,19 +165,21 @@ class MainViewModel @Inject constructor(
                         .sortedByDescending { it.emailCount }
 
                     lastEndDate = startDate
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingMore = false,
-                        subscriptions = merged,
-                        selectedItems = _uiState.value.selectedItems.filter { s -> merged.any { it.senderEmail == s.senderEmail } }.toSet()
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isLoadingMore = false,
+                            subscriptions = merged,
+                            selectedItems = it.selectedItems.filter { s -> merged.any { item -> item.senderEmail == s.senderEmail } }.toSet()
+                        )
+                    }
                     applyFilter()
                 } else {
-                    _uiState.value = _uiState.value.copy(isLoadingMore = false, isLastPage = true)
+                    _uiState.update { it.copy(isLoadingMore = false, isLastPage = true) }
                     _uiEvent.emit(MainUiEvent.ShowMessage(getApplication<Application>().getString(R.string.snackbar_all_loaded)))
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "load more error", e)
-                _uiState.value = _uiState.value.copy(isLoadingMore = false)
+                _uiState.update { it.copy(isLoadingMore = false) }
                 _uiEvent.emit(MainUiEvent.ShowError(getApplication<Application>().getString(R.string.error_generic)))
             }
         }
@@ -183,17 +193,19 @@ class MainViewModel @Inject constructor(
         if (lastRemovedSubscriptionIndex == -1) return
 
         lastRemovedSubscription = currentList.removeAt(lastRemovedSubscriptionIndex)
-        _uiState.value = _uiState.value.copy(
-            subscriptions = currentList,
-            processingEmail = null,
-            selectedItems = _uiState.value.selectedItems - subscription
-        )
+        _uiState.update {
+            it.copy(
+                subscriptions = currentList,
+                processingEmail = null,
+                selectedItems = it.selectedItems - subscription
+            )
+        }
         applyFilter()
 
         pendingJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
-            _uiState.value = _uiState.value.copy(processingEmail = subscription.senderEmail)
+            _uiState.update { it.copy(processingEmail = subscription.senderEmail) }
             val action = unsubscribeAndCleanUseCase(account, subscription, cleanEmails)
-            _uiState.value = _uiState.value.copy(processingEmail = null)
+            _uiState.update { it.copy(processingEmail = null) }
 
             if (action is UnsubscribeAction.NotFound) {
                 undoLastAction(informUser = false)
@@ -224,10 +236,12 @@ class MainViewModel @Inject constructor(
         if (lastRemovedSubscriptionIndex == -1) return
 
         lastRemovedSubscription = currentList.removeAt(lastRemovedSubscriptionIndex)
-        _uiState.value = _uiState.value.copy(
-            subscriptions = currentList,
-            selectedItems = _uiState.value.selectedItems - subscription
-        )
+        _uiState.update {
+            it.copy(
+                subscriptions = currentList,
+                selectedItems = it.selectedItems - subscription
+            )
+        }
         applyFilter()
 
         pendingJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
@@ -251,7 +265,7 @@ class MainViewModel @Inject constructor(
             if (lastRemovedSubscriptionIndex != -1) {
                 val updated = _uiState.value.subscriptions.toMutableList()
                 updated.add(lastRemovedSubscriptionIndex, removed)
-                _uiState.value = _uiState.value.copy(subscriptions = updated.sortedByDescending { it.emailCount })
+                _uiState.update { it.copy(subscriptions = updated.sortedByDescending { item -> item.emailCount }) }
                 applyFilter()
             }
         }
@@ -274,7 +288,7 @@ class MainViewModel @Inject constructor(
     fun toggleSelection(subscription: Subscription) {
         val selection = _uiState.value.selectedItems.toMutableSet()
         if (selection.contains(subscription)) selection.remove(subscription) else selection.add(subscription)
-        _uiState.value = _uiState.value.copy(selectedItems = selection)
+        _uiState.update { it.copy(selectedItems = selection) }
     }
 
     fun startSelectionMode(subscription: Subscription) {
@@ -282,11 +296,11 @@ class MainViewModel @Inject constructor(
     }
 
     fun clearSelection() {
-        _uiState.value = _uiState.value.copy(selectedItems = emptySet())
+        _uiState.update { it.copy(selectedItems = emptySet()) }
     }
 
     fun selectAll() {
-        _uiState.value = _uiState.value.copy(selectedItems = _uiState.value.filteredSubscriptions.toSet())
+        _uiState.update { it.copy(selectedItems = it.filteredSubscriptions.toSet()) }
     }
 
     fun getSelectedItemsCount(): Int = _uiState.value.selectedItems.size
@@ -299,7 +313,7 @@ class MainViewModel @Inject constructor(
             var successCount = 0
             val updated = _uiState.value.subscriptions.toMutableList()
             updated.removeAll(itemsToKeep)
-            _uiState.value = _uiState.value.copy(subscriptions = updated, selectedItems = emptySet())
+            _uiState.update { it.copy(subscriptions = updated, selectedItems = emptySet()) }
             applyFilter()
 
             itemsToKeep.forEach { if (keepSubscriptionUseCase(it)) successCount++ }
@@ -316,7 +330,7 @@ class MainViewModel @Inject constructor(
             var successCount = 0
             val updated = _uiState.value.subscriptions.toMutableList()
             updated.removeAll(itemsToUnsubscribe)
-            _uiState.value = _uiState.value.copy(subscriptions = updated, selectedItems = emptySet())
+            _uiState.update { it.copy(subscriptions = updated, selectedItems = emptySet()) }
             applyFilter()
 
             itemsToUnsubscribe.forEach {
@@ -333,20 +347,21 @@ class MainViewModel @Inject constructor(
         lastRemovedSubscription = null
         lastRemovedSubscriptionIndex = -1
         lastEndDate = null
-        _uiState.value = MainUiState()
+        _uiState.update { MainUiState() }
     }
 
     private fun applyFilter() {
-        val state = _uiState.value
-        val filtered = if (state.searchQuery.isBlank()) {
-            state.subscriptions
-        } else {
-            state.subscriptions.filter {
-                it.senderName.contains(state.searchQuery, ignoreCase = true) ||
-                    it.senderEmail.contains(state.searchQuery, ignoreCase = true)
+        _uiState.update { state ->
+            val filtered = if (state.searchQuery.isBlank()) {
+                state.subscriptions
+            } else {
+                state.subscriptions.filter {
+                    it.senderName.contains(state.searchQuery, ignoreCase = true) ||
+                        it.senderEmail.contains(state.searchQuery, ignoreCase = true)
+                }
             }
+            state.copy(filteredSubscriptions = filtered)
         }
-        _uiState.value = state.copy(filteredSubscriptions = filtered)
     }
 
     private fun getNextDateRange(): Pair<Calendar, Calendar> {

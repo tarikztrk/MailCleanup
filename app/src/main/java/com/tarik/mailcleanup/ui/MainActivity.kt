@@ -7,7 +7,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -107,14 +109,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            viewModel.uiState.collect { state ->
-                when {
-                    state.scanStatus is ScanUiStatus.InProgress -> showLoadingView(getString(R.string.status_scanning))
-                    state.scanStatus is ScanUiStatus.Success -> showSubscriptionList()
-                    state.scanStatus is ScanUiStatus.Error -> showSignInView((state.scanStatus as ScanUiStatus.Error).message)
-                    state.signInStatus is SignInUiStatus.InProgress -> showLoadingView(getString(R.string.status_signing_in))
-                    state.signInStatus is SignInUiStatus.Error -> showSignInView((state.signInStatus as SignInUiStatus.Error).message)
-                    else -> showSignInView(null)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.uiState.collect { state ->
+                        when {
+                            state.scanStatus is ScanUiStatus.InProgress -> showLoadingView(getString(R.string.status_scanning))
+                            state.scanStatus is ScanUiStatus.Success -> showSubscriptionList()
+                            state.scanStatus is ScanUiStatus.Error -> showSignInView((state.scanStatus as ScanUiStatus.Error).message)
+                            state.signInStatus is SignInUiStatus.InProgress -> showLoadingView(getString(R.string.status_signing_in))
+                            state.signInStatus is SignInUiStatus.Error -> showSignInView((state.signInStatus as SignInUiStatus.Error).message)
+                            else -> showSignInView(null)
+                        }
+                    }
                 }
             }
         }

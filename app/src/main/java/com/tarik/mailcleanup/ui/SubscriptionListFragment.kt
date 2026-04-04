@@ -21,6 +21,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -29,7 +30,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.domain.model.Subscription
-import com.tarik.mailcleanup.domain.model.UnsubscribeAction
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionListBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collect
@@ -207,42 +207,44 @@ class SubscriptionListFragment : Fragment() {
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.uiState.collect { state ->
-                subscriptionAdapter.submitList(state.filteredSubscriptions)
-                subscriptionAdapter.setProcessingState(state.processingEmail)
-                checkEmptyState(state.filteredSubscriptions)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.uiState.collect { state ->
+                        subscriptionAdapter.submitList(state.filteredSubscriptions)
+                        subscriptionAdapter.setProcessingState(state.processingEmail)
+                        checkEmptyState(state.filteredSubscriptions)
 
-                binding.loadMoreProgressBar.visibility = if (state.isLoadingMore) View.VISIBLE else View.GONE
-                isLastPage = state.isLastPage
+                        binding.loadMoreProgressBar.visibility = if (state.isLoadingMore) View.VISIBLE else View.GONE
+                        isLastPage = state.isLastPage
 
-                if (state.isLastPage && !hasShownAllLoadedMessage) {
-                    hasShownAllLoadedMessage = true
-                    showSnackbar(getString(R.string.snackbar_all_loaded))
-                } else if (!state.isLastPage) {
-                    hasShownAllLoadedMessage = false
+                        if (state.isLastPage && !hasShownAllLoadedMessage) {
+                            hasShownAllLoadedMessage = true
+                            showSnackbar(getString(R.string.snackbar_all_loaded))
+                        } else if (!state.isLastPage) {
+                            hasShownAllLoadedMessage = false
+                        }
+
+                        if (state.scanStatus is ScanUiStatus.InProgress) {
+                            binding.emptyStateLayout.visibility = View.GONE
+                            binding.subscriptionsRecyclerView.visibility = View.VISIBLE
+                        }
+                        if (state.isSelectionMode && actionMode == null) {
+                            actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
+                        } else if (!state.isSelectionMode && actionMode != null) {
+                            actionMode?.finish()
+                        }
+                        actionMode?.title = getString(R.string.selection_title, state.selectedItems.size)
+                    }
                 }
-
-                if (state.scanStatus is ScanUiStatus.InProgress) {
-                    binding.emptyStateLayout.visibility = View.GONE
-                    binding.subscriptionsRecyclerView.visibility = View.VISIBLE
-                }
-                if (state.isSelectionMode && actionMode == null) {
-                    actionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
-                } else if (!state.isSelectionMode && actionMode != null) {
-                    actionMode?.finish()
-                }
-                actionMode?.title = getString(R.string.selection_title, state.selectedItems.size)
-                subscriptionAdapter.submitList(state.filteredSubscriptions.toList())
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.uiEvent.collect { event ->
-                when (event) {
-                    is MainUiEvent.ShowUndo -> showUndoSnackbar(event.message)
-                    is MainUiEvent.ShowError -> showSnackbar(event.message, isError = true)
-                    is MainUiEvent.ShowMessage -> showSnackbar(event.message)
-                    is MainUiEvent.OpenUrl -> openUrlInCustomTab(event.url)
+                launch {
+                    viewModel.uiEvent.collect { event ->
+                        when (event) {
+                            is MainUiEvent.ShowUndo -> showUndoSnackbar(event.message)
+                            is MainUiEvent.ShowError -> showSnackbar(event.message, isError = true)
+                            is MainUiEvent.ShowMessage -> showSnackbar(event.message)
+                            is MainUiEvent.OpenUrl -> openUrlInCustomTab(event.url)
+                        }
+                    }
                 }
             }
         }
