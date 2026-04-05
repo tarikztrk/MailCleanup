@@ -16,6 +16,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.NavHostFragment
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.Identity
@@ -230,7 +231,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLoadingView(message: String) {
-        removeFragment()
         binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.VISIBLE
         binding.fragmentContainer.visibility = View.GONE
@@ -243,7 +243,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSignInView(errorMessage: String?) {
-        removeFragment()
         binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.VISIBLE
         binding.fragmentContainer.visibility = View.GONE
@@ -263,17 +262,10 @@ class MainActivity : AppCompatActivity() {
         binding.appBarLayout.visibility = View.GONE
         binding.signInLayout.visibility = View.GONE
         binding.fragmentContainer.visibility = View.VISIBLE
-        // Fragment'i tekrar tekrar yaratmamak için tag kontrolü.
-        if (supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list)) == null) {
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, SubscriptionListFragment::class.java, null, getString(R.string.fragment_tag_subscription_list))
-                .commit()
-        }
-    }
-
-    private fun removeFragment() {
-        supportFragmentManager.findFragmentByTag(getString(R.string.fragment_tag_subscription_list))?.let {
-            supportFragmentManager.beginTransaction().remove(it).commit()
+        val navHost = supportFragmentManager.findFragmentById(R.id.fragmentContainer) as? NavHostFragment
+        val navController = navHost?.navController
+        if (navController != null && navController.currentDestination?.id != R.id.subscriptionListFragment) {
+            navController.popBackStack(R.id.subscriptionListFragment, false)
         }
     }
 

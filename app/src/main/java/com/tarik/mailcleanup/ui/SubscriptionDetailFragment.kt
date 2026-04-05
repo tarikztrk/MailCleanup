@@ -10,6 +10,8 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionDetailBinding
@@ -19,28 +21,14 @@ import kotlinx.coroutines.launch
 class SubscriptionDetailFragment : Fragment() {
 
     companion object {
-        private const val ARG_SENDER_NAME = "arg_sender_name"
-        private const val ARG_SENDER_EMAIL = "arg_sender_email"
-        private const val ARG_EMAIL_COUNT = "arg_email_count"
         private const val PREFS_NAME = "mail_cleanup_ui_prefs"
         private const val PREF_SKIP_UNSUBSCRIBE_CONFIRM = "pref_skip_unsubscribe_confirm"
-
-        fun createArgs(
-            senderName: String,
-            senderEmail: String,
-            emailCount: Int
-        ): Bundle {
-            return Bundle().apply {
-                putString(ARG_SENDER_NAME, senderName)
-                putString(ARG_SENDER_EMAIL, senderEmail)
-                putInt(ARG_EMAIL_COUNT, emailCount)
-            }
-        }
     }
 
     private var _binding: FragmentSubscriptionDetailBinding? = null
     private val binding get() = _binding!!
     private val viewModel: MainViewModel by activityViewModels()
+    private val args: SubscriptionDetailFragmentArgs by navArgs()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,13 +48,13 @@ class SubscriptionDetailFragment : Fragment() {
     }
 
     private fun bindData() {
-        val senderName = arguments?.getString(ARG_SENDER_NAME).orEmpty().ifBlank {
+        val senderName = args.senderName.ifBlank {
             getString(R.string.unknown_sender)
         }
-        val senderEmail = arguments?.getString(ARG_SENDER_EMAIL).orEmpty().ifBlank {
+        val senderEmail = args.senderEmail.ifBlank {
             getString(R.string.unknown_sender)
         }
-        val emailCount = arguments?.getInt(ARG_EMAIL_COUNT) ?: 0
+        val emailCount = args.emailCount
         val weeklyFrequencyValue = (emailCount / 48.0).coerceAtLeast(0.1)
         val weeklyFrequency = "~${String.format(Locale.US, "%.1f", weeklyFrequencyValue)} emails per week"
         val storageMb = (emailCount * 0.29).toInt().coerceAtLeast(1)
@@ -81,26 +69,17 @@ class SubscriptionDetailFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.backButton.setOnClickListener {
-            parentFragmentManager.popBackStack()
+            findNavController().navigateUp()
         }
 
         binding.searchButton.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(
-                    R.id.fragmentContainer,
-                    SearchFragment::class.java,
-                    null,
-                    getString(R.string.fragment_tag_search)
-                )
-                .addToBackStack(getString(R.string.fragment_tag_search))
-                .commit()
+            val action = SubscriptionDetailFragmentDirections
+                .actionSubscriptionDetailFragmentToSearchFragment()
+            findNavController().navigate(action)
         }
 
         binding.navHomeItem.setOnClickListener {
-            parentFragmentManager.popBackStack(
-                getString(R.string.fragment_tag_subscription_list),
-                0
-            )
+            findNavController().popBackStack(R.id.subscriptionListFragment, false)
         }
 
         binding.navActivityItem.setOnClickListener {
@@ -125,7 +104,7 @@ class SubscriptionDetailFragment : Fragment() {
         }
 
         binding.deleteAllButton.setOnClickListener {
-            val emailCount = arguments?.getInt(ARG_EMAIL_COUNT) ?: 0
+            val emailCount = args.emailCount
             DeleteConfirmDialogFragment.newInstance(emailCount)
                 .show(parentFragmentManager, "delete_confirm_dialog")
         }
@@ -206,13 +185,13 @@ class SubscriptionDetailFragment : Fragment() {
     }
 
     private fun requireSenderName(): String {
-        return arguments?.getString(ARG_SENDER_NAME).orEmpty().ifBlank {
+        return args.senderName.ifBlank {
             getString(R.string.unknown_sender)
         }
     }
 
     private fun requireSenderEmail(): String {
-        return arguments?.getString(ARG_SENDER_EMAIL).orEmpty().ifBlank {
+        return args.senderEmail.ifBlank {
             getString(R.string.unknown_sender)
         }
     }

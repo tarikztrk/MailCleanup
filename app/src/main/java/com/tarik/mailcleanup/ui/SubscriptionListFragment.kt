@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.paging.LoadState
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
@@ -173,31 +174,19 @@ class SubscriptionListFragment : Fragment() {
 
     }
     private fun openSearchScreen() {
-        parentFragmentManager.beginTransaction()
-            .replace(
-                R.id.fragmentContainer,
-                SearchFragment::class.java,
-                null,
-                getString(R.string.fragment_tag_search)
-            )
-            .addToBackStack(getString(R.string.fragment_tag_search))
-            .commit()
+        val action = SubscriptionListFragmentDirections
+            .actionSubscriptionListFragmentToSearchFragment()
+        findNavController().navigate(action)
     }
 
     private fun openDetailScreen(subscription: Subscription) {
-        parentFragmentManager.beginTransaction()
-            .replace(
-                R.id.fragmentContainer,
-                SubscriptionDetailFragment::class.java,
-                SubscriptionDetailFragment.createArgs(
-                    senderName = subscription.senderName,
-                    senderEmail = subscription.senderEmail,
-                    emailCount = subscription.emailCount
-                ),
-                getString(R.string.fragment_tag_subscription_detail)
+        val action = SubscriptionListFragmentDirections
+            .actionSubscriptionListFragmentToSubscriptionDetailFragment(
+                senderName = subscription.senderName,
+                senderEmail = subscription.senderEmail,
+                emailCount = subscription.emailCount
             )
-            .addToBackStack(getString(R.string.fragment_tag_subscription_detail))
-            .commit()
+        findNavController().navigate(action)
     }
 
     private fun showSortMenu(anchor: View) {

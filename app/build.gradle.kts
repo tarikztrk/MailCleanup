@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinKapt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hiltAndroid)
+    alias(libs.plugins.navigation.safe.args)
 }
 
 android {
@@ -39,12 +40,10 @@ android {
         viewBinding = true
     }
 
-    // Tek ve doğru paketleme bloğu
-    packaging {
-        resources {
-            excludes += "/META-INF/**"
-        }
-    }
+}
+
+tasks.withType<Copy>().configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 dependencies {
@@ -56,6 +55,8 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.activity)
     implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation(libs.androidx.navigation.fragment)
+    implementation(libs.androidx.navigation.ui)
     implementation("androidx.browser:browser:1.8.0")
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
     implementation("androidx.credentials:credentials:1.3.0")
@@ -78,13 +79,20 @@ dependencies {
     // --- GOOGLE & GMAIL KÜTÜPHANELERİ (SADELEŞTİRİLMİŞ) ---
     // Sadece bu 3 satır gerekli. Diğerleri (http, gson, auth) bunlar tarafından dolaylı olarak eklenir.
     implementation("com.google.android.gms:play-services-auth:21.2.0")
-    implementation("com.google.api-client:google-api-client-android:2.4.0")
-    implementation("com.google.apis:google-api-services-gmail:v1-rev20220404-2.0.0")
+    implementation("com.google.api-client:google-api-client-android:2.4.0") {
+        exclude(group = "org.apache.httpcomponents", module = "httpclient")
+        exclude(group = "org.apache.httpcomponents", module = "httpcore")
+    }
+    implementation("com.google.apis:google-api-services-gmail:v1-rev20220404-2.0.0") {
+        exclude(group = "org.apache.httpcomponents", module = "httpclient")
+        exclude(group = "org.apache.httpcomponents", module = "httpcore")
+    }
     // ----------------------------------------------------
 
     // E-POSTA GÖNDERME (javax.mail)
-    implementation("com.sun.mail:android-mail:1.6.7")
-    implementation("com.sun.mail:android-activation:1.6.7")
+    implementation("com.sun.mail:android-mail:1.6.7") {
+        exclude(group = "com.sun.mail", module = "android-activation")
+    }
 
     // HILT DI
     implementation(libs.hilt.android)

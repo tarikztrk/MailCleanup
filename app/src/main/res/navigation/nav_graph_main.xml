@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph_main"
+    app:startDestination="@id/subscriptionListFragment">
+
+    <fragment
+        android:id="@+id/subscriptionListFragment"
+        android:name="com.tarik.mailcleanup.ui.SubscriptionListFragment"
+        android:label="SubscriptionListFragment">
+        <action
+            android:id="@+id/action_subscriptionListFragment_to_searchFragment"
+            app:destination="@id/searchFragment" />
+        <action
+            android:id="@+id/action_subscriptionListFragment_to_subscriptionDetailFragment"
+            app:destination="@id/subscriptionDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/searchFragment"
+        android:name="com.tarik.mailcleanup.ui.SearchFragment"
+        android:label="SearchFragment">
+        <action
+            android:id="@+id/action_searchFragment_to_subscriptionDetailFragment"
+            app:destination="@id/subscriptionDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/subscriptionDetailFragment"
+        android:name="com.tarik.mailcleanup.ui.SubscriptionDetailFragment"
+        android:label="SubscriptionDetailFragment">
+        <argument
+            android:name="senderName"
+            app:argType="string" />
+        <argument
+            android:name="senderEmail"
+            app:argType="string" />
+        <argument
+            android:name="emailCount"
+            app:argType="integer" />
+        <action
+            android:id="@+id/action_subscriptionDetailFragment_to_searchFragment"
+            app:destination="@id/searchFragment" />
+    </fragment>
+
+</navigation>

@@ -11,6 +11,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.FragmentSearchBinding
 import com.tarik.mailcleanup.domain.model.Subscription
@@ -69,7 +70,7 @@ class SearchFragment : Fragment() {
 
         binding.backButton.setOnClickListener {
             viewModel.setSearchQuery("")
-            parentFragmentManager.popBackStack()
+            findNavController().navigateUp()
         }
     }
 
@@ -91,19 +92,13 @@ class SearchFragment : Fragment() {
     }
 
     private fun openDetailScreen(subscription: Subscription) {
-        parentFragmentManager.beginTransaction()
-            .replace(
-                R.id.fragmentContainer,
-                SubscriptionDetailFragment::class.java,
-                SubscriptionDetailFragment.createArgs(
-                    senderName = subscription.senderName,
-                    senderEmail = subscription.senderEmail,
-                    emailCount = subscription.emailCount
-                ),
-                getString(R.string.fragment_tag_subscription_detail)
+        val action = SearchFragmentDirections
+            .actionSearchFragmentToSubscriptionDetailFragment(
+                senderName = subscription.senderName,
+                senderEmail = subscription.senderEmail,
+                emailCount = subscription.emailCount
             )
-            .addToBackStack(getString(R.string.fragment_tag_subscription_detail))
-            .commit()
+        findNavController().navigate(action)
     }
 
     override fun onDestroyView() {
