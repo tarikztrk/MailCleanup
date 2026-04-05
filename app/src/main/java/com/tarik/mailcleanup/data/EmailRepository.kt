@@ -92,6 +92,36 @@ class EmailRepository @Inject constructor(
         }
     }
 
+    override suspend fun unsubscribeBySender(
+        account: MailAccount,
+        senderName: String,
+        senderEmail: String,
+        cleanEmails: Boolean
+    ): DomainResult<UnsubscribeAction> {
+        return try {
+            val action = remoteDataSource.unsubscribeBySender(account, senderEmail, cleanEmails)
+                ?: return DomainResult.Error(DomainError.NoUnsubscribeMethod)
+            localDataSource.markUnsubscribed(senderEmail)
+            DomainResult.Success(action)
+        } catch (e: Exception) {
+            Log.e("EmailRepository", "Sender bazlı abonelikten çıkma hatası", e)
+            DomainResult.Error(classifyError(e))
+        }
+    }
+
+    override suspend fun deleteAllEmailsBySender(
+        account: MailAccount,
+        senderEmail: String
+    ): DomainResult<Int> {
+        return try {
+            val deletedCount = remoteDataSource.deleteAllEmailsBySender(account, senderEmail)
+            DomainResult.Success(deletedCount)
+        } catch (e: Exception) {
+            Log.e("EmailRepository", "Sender bazlı silme hatası", e)
+            DomainResult.Error(classifyError(e))
+        }
+    }
+
     override suspend fun keepSubscription(subscription: Subscription): DomainResult<Unit> {
         return try {
             localDataSource.markWhitelisted(subscription.senderEmail)

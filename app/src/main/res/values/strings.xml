@@ -106,6 +106,7 @@
     <string name="detail_delete_confirm">Sil</string>
     <string name="detail_action_queued">İşlem kuyruğa alındı.</string>
     <string name="detail_delete_action_queued">Silme işlemi kuyruğa alındı.</string>
+    <string name="detail_delete_action_success">%1$d email silindi.</string>
     <string name="detail_items_count">%1$d items</string>
     <string name="delete_modal_title">Clear Inbox History?</string>
     <string name="delete_modal_desc_format">You are about to delete %1$d emails from your inbox. This action is permanent and cannot be undone. All curated history for this subscription will be lost.</string>

@@ -13,6 +13,8 @@ import java.util.Calendar
 interface SubscriptionRepository {
     suspend fun getSubscriptions(account: MailAccount, startDate: Calendar, endDate: Calendar): DomainResult<List<Subscription>>
     suspend fun unsubscribeAndClean(account: MailAccount, subscription: Subscription, cleanEmails: Boolean): DomainResult<UnsubscribeAction>
+    suspend fun unsubscribeBySender(account: MailAccount, senderName: String, senderEmail: String, cleanEmails: Boolean): DomainResult<UnsubscribeAction>
+    suspend fun deleteAllEmailsBySender(account: MailAccount, senderEmail: String): DomainResult<Int>
     suspend fun keepSubscription(subscription: Subscription): DomainResult<Unit>
     suspend fun deleteProcessedSubscription(email: String)
     suspend fun unkeepSubscription(subscription: Subscription)

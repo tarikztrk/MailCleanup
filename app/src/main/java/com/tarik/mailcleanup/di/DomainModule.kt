@@ -1,8 +1,10 @@
 package com.tarik.mailcleanup.di
 
 import com.tarik.mailcleanup.domain.repository.SubscriptionRepository
+import com.tarik.mailcleanup.domain.usecase.DeleteAllEmailsBySenderUseCase
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
 import com.tarik.mailcleanup.domain.usecase.KeepSubscriptionUseCase
+import com.tarik.mailcleanup.domain.usecase.UnsubscribeBySenderUseCase
 import com.tarik.mailcleanup.domain.usecase.UnsubscribeAndCleanUseCase
 import dagger.Module
 import dagger.Provides
@@ -34,4 +36,16 @@ object DomainModule {
     fun provideKeepSubscriptionUseCase(
         repository: SubscriptionRepository
     ): KeepSubscriptionUseCase = KeepSubscriptionUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideUnsubscribeBySenderUseCase(
+        repository: SubscriptionRepository
+    ): UnsubscribeBySenderUseCase = UnsubscribeBySenderUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideDeleteAllEmailsBySenderUseCase(
+        repository: SubscriptionRepository
+    ): DeleteAllEmailsBySenderUseCase = DeleteAllEmailsBySenderUseCase(repository)
 }

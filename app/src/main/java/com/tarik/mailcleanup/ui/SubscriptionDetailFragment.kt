@@ -4,11 +4,17 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionDetailBinding
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 class SubscriptionDetailFragment : Fragment() {
 
@@ -34,6 +40,7 @@ class SubscriptionDetailFragment : Fragment() {
 
     private var _binding: FragmentSubscriptionDetailBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: MainViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,6 +54,7 @@ class SubscriptionDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupDialogResults()
+        observeUiEvents()
         bindData()
         setupClickListeners()
     }
@@ -105,13 +113,14 @@ class SubscriptionDetailFragment : Fragment() {
 
         binding.unsubscribeButton.setOnClickListener {
             if (shouldSkipUnsubscribeConfirm()) {
-                showMessage(getString(R.string.detail_action_queued))
+                viewModel.unsubscribeFromDetail(
+                    senderName = requireSenderName(),
+                    senderEmail = requireSenderEmail(),
+                    cleanEmails = false
+                )
                 return@setOnClickListener
             }
-            val senderName = arguments?.getString(ARG_SENDER_NAME).orEmpty().ifBlank {
-                getString(R.string.unknown_sender)
-            }
-            UnsubscribeConfirmDialogFragment.newInstance(senderName)
+            UnsubscribeConfirmDialogFragment.newInstance(requireSenderName())
                 .show(parentFragmentManager, "unsubscribe_confirm_dialog")
         }
 
@@ -137,7 +146,11 @@ class SubscriptionDetailFragment : Fragment() {
             if (dontShowAgain) {
                 saveSkipUnsubscribeConfirm(true)
             }
-            showMessage(getString(R.string.detail_action_queued))
+            viewModel.unsubscribeFromDetail(
+                senderName = requireSenderName(),
+                senderEmail = requireSenderEmail(),
+                cleanEmails = false
+            )
         }
 
         parentFragmentManager.setFragmentResultListener(
@@ -146,7 +159,22 @@ class SubscriptionDetailFragment : Fragment() {
         ) { _, bundle ->
             val confirmed = bundle.getBoolean(DeleteConfirmDialogFragment.RESULT_CONFIRMED, false)
             if (!confirmed) return@setFragmentResultListener
-            showMessage(getString(R.string.detail_delete_action_queued))
+            viewModel.deleteAllEmailsFromDetail(requireSenderEmail())
+        }
+    }
+
+    private fun observeUiEvents() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiEvent.collect { event ->
+                    when (event) {
+                        is MainUiEvent.ShowMessage -> showMessage(event.message)
+                        is MainUiEvent.ShowError -> showMessage(event.message)
+                        is MainUiEvent.OpenUrl -> openUrlInCustomTab(event.url)
+                        is MainUiEvent.ShowUndo -> Unit
+                    }
+                }
+            }
         }
     }
 
@@ -166,6 +194,27 @@ class SubscriptionDetailFragment : Fragment() {
 
     private fun showMessage(message: String) {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT).show()
+    }
+
+    private fun openUrlInCustomTab(url: String) {
+        runCatching {
+            CustomTabsIntent.Builder().build().launchUrl(requireContext(), android.net.Uri.parse(url))
+        }.onFailure {
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            startActivity(intent)
+        }
+    }
+
+    private fun requireSenderName(): String {
+        return arguments?.getString(ARG_SENDER_NAME).orEmpty().ifBlank {
+            getString(R.string.unknown_sender)
+        }
+    }
+
+    private fun requireSenderEmail(): String {
+        return arguments?.getString(ARG_SENDER_EMAIL).orEmpty().ifBlank {
+            getString(R.string.unknown_sender)
+        }
     }
 
     override fun onDestroyView() {

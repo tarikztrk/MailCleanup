@@ -14,7 +14,9 @@ import com.tarik.mailcleanup.domain.model.DomainResult
 import com.tarik.mailcleanup.domain.model.MailAccount
 import com.tarik.mailcleanup.domain.model.Subscription
 import com.tarik.mailcleanup.domain.model.UnsubscribeAction
+import com.tarik.mailcleanup.domain.usecase.DeleteAllEmailsBySenderUseCase
 import com.tarik.mailcleanup.domain.usecase.GetSubscriptionsUseCase
+import com.tarik.mailcleanup.domain.usecase.UnsubscribeBySenderUseCase
 import com.tarik.mailcleanup.domain.usecase.UnsubscribeAndCleanUseCase
 import com.tarik.mailcleanup.ui.paging.SubscriptionPagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -99,7 +101,9 @@ sealed interface MainUiEvent {
 class MainViewModel @Inject constructor(
     private val stringProvider: StringProvider,
     private val getSubscriptionsUseCase: GetSubscriptionsUseCase,
-    private val unsubscribeAndCleanUseCase: UnsubscribeAndCleanUseCase
+    private val unsubscribeAndCleanUseCase: UnsubscribeAndCleanUseCase,
+    private val unsubscribeBySenderUseCase: UnsubscribeBySenderUseCase,
+    private val deleteAllEmailsBySenderUseCase: DeleteAllEmailsBySenderUseCase
 ) : ViewModel() {
 
     // Ekranın ana state kaynağı.
@@ -320,6 +324,65 @@ class MainViewModel @Inject constructor(
         pendingJob = null
         lastRemovedSubscription = null
         _uiState.update { MainUiState() }
+    }
+
+    fun unsubscribeFromDetail(senderName: String, senderEmail: String, cleanEmails: Boolean = false) {
+        val account = _uiState.value.currentAccount ?: run {
+            viewModelScope.launch { emitEvent(MainUiEvent.ShowError(stringProvider.get(R.string.error_auth))) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(processingEmail = senderEmail) }
+            when (val result = unsubscribeBySenderUseCase(account, senderName, senderEmail, cleanEmails)) {
+                is DomainResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            processingEmail = null,
+                            hiddenEmails = it.hiddenEmails + senderEmail
+                        )
+                    }
+                    when (val action = result.data) {
+                        is UnsubscribeAction.MailTo -> {
+                            emitEvent(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_unsubscribed_mailto, senderEmail)))
+                        }
+                        is UnsubscribeAction.Http -> emitEvent(MainUiEvent.OpenUrl(action.url))
+                        is UnsubscribeAction.NotFound -> Unit
+                    }
+                    emitEvent(MainUiEvent.ShowMessage(stringProvider.get(R.string.snackbar_unsubscribed_success)))
+                }
+                is DomainResult.Error -> {
+                    _uiState.update { it.copy(processingEmail = null) }
+                    emitEvent(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
+                }
+            }
+        }
+    }
+
+    fun deleteAllEmailsFromDetail(senderEmail: String) {
+        val account = _uiState.value.currentAccount ?: run {
+            viewModelScope.launch { emitEvent(MainUiEvent.ShowError(stringProvider.get(R.string.error_auth))) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(processingEmail = senderEmail) }
+            when (val result = deleteAllEmailsBySenderUseCase(account, senderEmail)) {
+                is DomainResult.Success -> {
+                    _uiState.update { it.copy(processingEmail = null) }
+                    emitEvent(
+                        MainUiEvent.ShowMessage(
+                            stringProvider.get(
+                                R.string.detail_delete_action_success,
+                                result.data
+                            )
+                        )
+                    )
+                }
+                is DomainResult.Error -> {
+                    _uiState.update { it.copy(processingEmail = null) }
+                    emitEvent(MainUiEvent.ShowError(domainErrorToMessage(result.error)))
+                }
+            }
+        }
     }
 
     private fun domainErrorToMessage(error: DomainError): String {

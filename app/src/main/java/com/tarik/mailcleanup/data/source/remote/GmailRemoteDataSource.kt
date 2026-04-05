@@ -243,11 +243,45 @@ class GmailRemoteDataSource @Inject constructor(
             sendUnsubscribeEmail(gmail, account.email.orEmpty(), action.recipient, action.subject)
         }
 
-        if (cleanEmails) {
-            cleanEmailsFromSender(gmail, subscription.senderEmail)
-        }
+        if (cleanEmails) cleanEmailsFromSender(gmail, subscription.senderEmail)
 
         action
+    }
+
+    suspend fun unsubscribeBySender(
+        account: MailAccount,
+        senderEmail: String,
+        cleanEmails: Boolean
+    ): UnsubscribeAction? = withContext(Dispatchers.IO) {
+        val gmail = buildGmail(account)
+        val listResponse = gmail.users().messages().list("me")
+            .setQ("from:$senderEmail")
+            .setMaxResults(20)
+            .execute()
+
+        val ids = listResponse.messages?.map { it.id }.orEmpty()
+        for (id in ids) {
+            val message = gmail.users().messages().get("me", id).setFormat("metadata").execute()
+            val unsubscribeHeader = message.payload.headers
+                .find { it.name.equals("List-Unsubscribe", ignoreCase = true) }
+                ?.value
+                ?: continue
+
+            val action = parseUnsubscribeHeader(unsubscribeHeader)
+            if (action is UnsubscribeAction.NotFound) continue
+
+            if (action is UnsubscribeAction.MailTo) {
+                sendUnsubscribeEmail(gmail, account.email.orEmpty(), action.recipient, action.subject)
+            }
+            if (cleanEmails) cleanEmailsFromSender(gmail, senderEmail)
+            return@withContext action
+        }
+        null
+    }
+
+    suspend fun deleteAllEmailsBySender(account: MailAccount, senderEmail: String): Int = withContext(Dispatchers.IO) {
+        val gmail = buildGmail(account)
+        cleanEmailsFromSender(gmail, senderEmail)
     }
 
     private fun buildGmail(account: MailAccount): Gmail {
@@ -258,7 +292,7 @@ class GmailRemoteDataSource @Inject constructor(
             .build()
     }
 
-    private suspend fun cleanEmailsFromSender(gmail: Gmail, senderEmail: String) {
+    private suspend fun cleanEmailsFromSender(gmail: Gmail, senderEmail: String): Int {
         // Gönderene ait tüm mesaj id'lerini sayfalar halinde topluyoruz.
         val allMessageIds = mutableListOf<String>()
         var pageToken: String? = null
@@ -271,7 +305,7 @@ class GmailRemoteDataSource @Inject constructor(
             pageToken = response.nextPageToken
         } while (pageToken != null)
 
-        if (allMessageIds.isEmpty()) return
+        if (allMessageIds.isEmpty()) return 0
 
         val throttle = AdaptiveThrottle(
             minBatchSize = 3,
@@ -281,6 +315,7 @@ class GmailRemoteDataSource @Inject constructor(
             maxInterBatchDelayMs = 3000L,
             initialInterBatchDelayMs = 320L
         )
+        var deletedCount = 0
         var cursor = 0
 
         while (cursor < allMessageIds.size) {
@@ -297,7 +332,9 @@ class GmailRemoteDataSource @Inject constructor(
 
                     for (id in pendingIds) {
                         val callback = object : JsonBatchCallback<Message>() {
-                            override fun onSuccess(message: Message?, responseHeaders: HttpHeaders?) = Unit
+                            override fun onSuccess(message: Message?, responseHeaders: HttpHeaders?) {
+                                deletedCount++
+                            }
                             override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
                                 failedIds.add(id)
                                 if (isRateLimitError(e)) {
@@ -336,6 +373,7 @@ class GmailRemoteDataSource @Inject constructor(
                 delay(throttle.interBatchDelayMs)
             }
         }
+        return deletedCount
     }
 
     private fun parseUnsubscribeHeader(header: String): UnsubscribeAction {
