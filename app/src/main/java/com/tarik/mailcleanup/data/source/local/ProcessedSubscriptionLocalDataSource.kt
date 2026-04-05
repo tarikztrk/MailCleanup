@@ -1,9 +1,7 @@
 package com.tarik.mailcleanup.data.source.local
 
-import android.content.Context
-import com.tarik.mailcleanup.data.AppDatabase
 import com.tarik.mailcleanup.data.ProcessedSubscription
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.tarik.mailcleanup.data.ProcessedSubscriptionDao
 import javax.inject.Inject
 
 /**
@@ -11,10 +9,8 @@ import javax.inject.Inject
  * Repository bu sınıfı kullanarak local state'i yönetir.
  */
 class ProcessedSubscriptionLocalDataSource @Inject constructor(
-    @ApplicationContext context: Context
+    private val processedDao: ProcessedSubscriptionDao
 ) {
-    private val processedDao = AppDatabase.getDatabase(context).processedSubscriptionDao()
-
     suspend fun getProcessedMapByEmail(): Map<String, ProcessedSubscription> {
         return processedDao.getAll().associateBy { it.senderEmail }
     }

@@ -26,10 +26,12 @@ import com.google.api.services.gmail.GmailScopes
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.tarik.mailcleanup.R
+import com.tarik.mailcleanup.data.auth.SecureAuthStorage
 import com.tarik.mailcleanup.databinding.ActivityMainBinding
 import com.tarik.mailcleanup.domain.model.MailAccount
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Uygulama giriş ekranı + Google hesap yetkilendirme orkestrasyonu.
@@ -40,6 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
+    @Inject lateinit var secureAuthStorage: SecureAuthStorage
 
     private lateinit var credentialManager: CredentialManager
     private val authorizationClient by lazy { Identity.getAuthorizationClient(this) }
@@ -270,20 +273,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun cacheMailAccount(account: MailAccount) {
-        getSharedPreferences("mail_cleanup_auth", MODE_PRIVATE)
-            .edit()
-            .putString("account_name", account.accountName)
-            .putString("account_email", account.email)
-            .apply()
+        secureAuthStorage.saveMailAccount(account)
     }
 
     private fun loadCachedMailAccount(): MailAccount? {
-        val prefs = getSharedPreferences("mail_cleanup_auth", MODE_PRIVATE)
-        val accountName = prefs.getString("account_name", null) ?: return null
-        return MailAccount(
-            accountName = accountName,
-            email = prefs.getString("account_email", null)
-        )
+        return secureAuthStorage.loadMailAccount()
     }
 
     private fun hasGmailModifyScope(result: AuthorizationResult): Boolean {
