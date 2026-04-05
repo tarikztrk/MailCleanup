@@ -41,6 +41,8 @@ class SubscriptionListFragment : Fragment() {
     companion object {
         private const val SORT_MENU_MOST_FREQUENT = 1001
         private const val SORT_MENU_A_TO_Z = 1002
+        private const val PREFS_NAME = "mail_cleanup_ui_prefs"
+        private const val PREF_SKIP_UNSUBSCRIBE_CONFIRM = "pref_skip_unsubscribe_confirm"
     }
 
     private var _binding: FragmentSubscriptionListBinding? = null
@@ -54,6 +56,7 @@ class SubscriptionListFragment : Fragment() {
     private var actionMode: ActionMode? = null
     private var lastSelectedEmails: Set<String> = emptySet()
     private var isSkeletonAnimating = false
+    private var pendingUnsubscribeSubscription: Subscription? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSubscriptionListBinding.inflate(inflater, container, false)
@@ -63,6 +66,7 @@ class SubscriptionListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         currentAccount = viewModel.currentMailAccount()
+        setupDialogResults()
         setupRecyclerView()
         setupDashboardControls()
         observeViewModel()
@@ -131,7 +135,7 @@ class SubscriptionListFragment : Fragment() {
             isSelectionMode = { viewModel.uiState.value.isSelectionMode },
             isSelected = { subscription -> viewModel.uiState.value.selectedItems.contains(subscription) },
             onUnsubscribeClicked = { subscription ->
-                showUnsubscribeConfirmationDialog(subscription)
+                openUnsubscribeModal(subscription)
             }
         )
 
@@ -249,18 +253,56 @@ class SubscriptionListFragment : Fragment() {
         binding.sortTextView.text = text
     }
 
-    private fun showUnsubscribeConfirmationDialog(subscription: Subscription) {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.unsubscribe_dialog_title))
-            .setMessage(getString(R.string.unsubscribe_dialog_message, subscription.senderName))
-            .setNegativeButton(getString(R.string.dialog_option_unsubscribe_only)) { _, _ ->
-                currentAccount?.let { viewModel.unsubscribeAndClean(it, subscription, cleanEmails = false) }
+    private fun openUnsubscribeModal(subscription: Subscription) {
+        if (shouldSkipUnsubscribeConfirm()) {
+            currentAccount?.let { viewModel.unsubscribeAndClean(it, subscription, cleanEmails = false) }
+            return
+        }
+        pendingUnsubscribeSubscription = subscription
+        UnsubscribeConfirmDialogFragment.newInstance(subscription.senderName)
+            .show(parentFragmentManager, "unsubscribe_confirm_dialog_list")
+    }
+
+    private fun setupDialogResults() {
+        parentFragmentManager.setFragmentResultListener(
+            UnsubscribeConfirmDialogFragment.REQUEST_KEY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val confirmed = bundle.getBoolean(UnsubscribeConfirmDialogFragment.RESULT_CONFIRMED, false)
+            if (!confirmed) {
+                pendingUnsubscribeSubscription = null
+                return@setFragmentResultListener
             }
-            .setPositiveButton(getString(R.string.dialog_option_unsubscribe_and_clean)) { _, _ ->
-                currentAccount?.let { viewModel.unsubscribeAndClean(it, subscription, cleanEmails = true) }
+
+            val dontShowAgain = bundle.getBoolean(
+                UnsubscribeConfirmDialogFragment.RESULT_DONT_SHOW_AGAIN,
+                false
+            )
+            if (dontShowAgain) {
+                saveSkipUnsubscribeConfirm(true)
             }
-            .setNeutralButton(getString(R.string.dialog_option_cancel), null)
-            .show()
+
+            pendingUnsubscribeSubscription?.let { subscription ->
+                currentAccount?.let { account ->
+                    viewModel.unsubscribeAndClean(account, subscription, cleanEmails = false)
+                }
+            }
+            pendingUnsubscribeSubscription = null
+        }
+    }
+
+    private fun shouldSkipUnsubscribeConfirm(): Boolean {
+        return requireContext()
+            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getBoolean(PREF_SKIP_UNSUBSCRIBE_CONFIRM, false)
+    }
+
+    private fun saveSkipUnsubscribeConfirm(skip: Boolean) {
+        requireContext()
+            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_SKIP_UNSUBSCRIBE_CONFIRM, skip)
+            .apply()
     }
 
     private fun observeViewModel() {

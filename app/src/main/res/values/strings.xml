@@ -105,7 +105,17 @@
     <string name="detail_delete_message">Bu göndericiye ait tüm e-postaları silme işlemi başlatılsın mı?</string>
     <string name="detail_delete_confirm">Sil</string>
     <string name="detail_action_queued">İşlem kuyruğa alındı.</string>
+    <string name="detail_delete_action_queued">Silme işlemi kuyruğa alındı.</string>
     <string name="detail_items_count">%1$d items</string>
+    <string name="delete_modal_title">Clear Inbox History?</string>
+    <string name="delete_modal_desc_format">You are about to delete %1$d emails from your inbox. This action is permanent and cannot be undone. All curated history for this subscription will be lost.</string>
+    <string name="delete_modal_primary">Delete All</string>
+    <string name="delete_modal_secondary">Cancel</string>
+    <string name="unsubscribe_modal_title_format">Unsubscribe from %1$s?</string>
+    <string name="unsubscribe_modal_desc">You will no longer receive future emails from this sender. This action will help clear your digital space.</string>
+    <string name="unsubscribe_modal_dont_show_again">Don\'t show this again</string>
+    <string name="unsubscribe_modal_primary">Unsubscribe</string>
+    <string name="unsubscribe_modal_secondary">Keep Subscription</string>
     <string name="nav_home_selected">Ana sayfadasın.</string>
     <string name="nav_activity_soon">Activity ekranı yakında.</string>
     <string name="nav_settings_soon">Settings ekranı yakında.</string>

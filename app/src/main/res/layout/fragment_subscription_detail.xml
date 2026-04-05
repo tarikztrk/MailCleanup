@@ -27,8 +27,8 @@
             android:background="@android:color/transparent"
             android:contentDescription="@string/search_back"
             android:padding="6dp"
-            android:src="@drawable/ic_arrow_back_blue"
-            app:tint="@color/secondary_text" />
+            android:src="@drawable/ic_detail_back"
+            app:tint="@null" />
 
         <TextView
             android:layout_width="0dp"
@@ -47,8 +47,8 @@
             android:background="@android:color/transparent"
             android:contentDescription="@string/search_cd"
             android:padding="6dp"
-            android:src="@drawable/ic_search_simple"
-            app:tint="@color/brand_primary" />
+            android:src="@drawable/ic_detail_search"
+            app:tint="@null" />
 
         <ImageView
             android:layout_width="28dp"
@@ -155,8 +155,8 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:contentDescription="@null"
-                        android:src="@drawable/ic_email"
-                        app:tint="@color/brand_primary_dark" />
+                        android:src="@drawable/ic_detail_mail"
+                        app:tint="@null" />
 
                     <TextView
                         android:id="@+id/totalEmailsValueTextView"
@@ -194,8 +194,8 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:contentDescription="@null"
-                        android:src="@drawable/ic_history_simple"
-                        app:tint="@color/brand_primary_dark" />
+                        android:src="@drawable/ic_detail_database"
+                        app:tint="@null" />
 
                     <LinearLayout
                         android:layout_width="wrap_content"
@@ -254,8 +254,8 @@
                         android:layout_height="match_parent"
                         android:contentDescription="@null"
                         android:padding="8dp"
-                        android:src="@drawable/ic_activity_small"
-                        app:tint="@color/brand_primary_dark" />
+                        android:src="@drawable/ic_detail_trending"
+                        app:tint="@null" />
                 </FrameLayout>
 
                 <LinearLayout
@@ -305,21 +305,21 @@
             <LinearLayout
                 android:id="@+id/unsubscribeButton"
                 android:layout_width="match_parent"
-                android:layout_height="58dp"
+                android:layout_height="72dp"
                 android:layout_marginTop="12dp"
                 android:background="@drawable/bg_detail_unsubscribe_button"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
 
                 <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_notifications_off_white" />
+                    android:src="@drawable/ic_detail_unsubscribe" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -328,12 +328,12 @@
                     android:layout_weight="1"
                     android:text="@string/unsubscribe_full"
                     android:textColor="@android:color/white"
-                    android:textSize="14sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_chevron_right_white" />
             </LinearLayout>
@@ -341,22 +341,22 @@
             <LinearLayout
                 android:id="@+id/deleteAllButton"
                 android:layout_width="match_parent"
-                android:layout_height="74dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="96dp"
+                android:layout_marginTop="12dp"
                 android:background="@drawable/bg_detail_delete_button"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
 
                 <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_delete_red"
-                    app:tint="#A31621" />
+                    android:src="@drawable/ic_detail_delete_sweep"
+                    app:tint="@null" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -365,7 +365,7 @@
                     android:layout_weight="1"
                     android:text="@string/detail_delete_all"
                     android:textColor="#A31621"
-                    android:textSize="14sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -374,17 +374,17 @@
                     android:layout_height="wrap_content"
                     android:text="154 items"
                     android:textColor="#C45B5B"
-                    android:textSize="12sp"
+                    android:textSize="16sp"
                     android:textStyle="bold"
                     tools:ignore="HardcodedText" />
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:layout_marginStart="8dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_delete_red"
-                    app:tint="#A31621" />
+                    android:src="@drawable/ic_detail_delete_sweep"
+                    app:tint="@null" />
             </LinearLayout>
 
             <TextView

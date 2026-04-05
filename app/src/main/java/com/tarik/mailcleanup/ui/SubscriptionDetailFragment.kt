@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.FragmentSubscriptionDetailBinding
@@ -17,6 +16,8 @@ class SubscriptionDetailFragment : Fragment() {
         private const val ARG_SENDER_NAME = "arg_sender_name"
         private const val ARG_SENDER_EMAIL = "arg_sender_email"
         private const val ARG_EMAIL_COUNT = "arg_email_count"
+        private const val PREFS_NAME = "mail_cleanup_ui_prefs"
+        private const val PREF_SKIP_UNSUBSCRIBE_CONFIRM = "pref_skip_unsubscribe_confirm"
 
         fun createArgs(
             senderName: String,
@@ -45,6 +46,7 @@ class SubscriptionDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupDialogResults()
         bindData()
         setupClickListeners()
     }
@@ -87,26 +89,64 @@ class SubscriptionDetailFragment : Fragment() {
         }
 
         binding.unsubscribeButton.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(getString(R.string.detail_unsubscribe_title))
-                .setMessage(getString(R.string.detail_unsubscribe_message))
-                .setNegativeButton(getString(R.string.dialog_option_cancel), null)
-                .setPositiveButton(getString(R.string.detail_unsubscribe_confirm)) { _, _ ->
-                    showMessage(getString(R.string.detail_action_queued))
-                }
-                .show()
+            if (shouldSkipUnsubscribeConfirm()) {
+                showMessage(getString(R.string.detail_action_queued))
+                return@setOnClickListener
+            }
+            val senderName = arguments?.getString(ARG_SENDER_NAME).orEmpty().ifBlank {
+                getString(R.string.unknown_sender)
+            }
+            UnsubscribeConfirmDialogFragment.newInstance(senderName)
+                .show(parentFragmentManager, "unsubscribe_confirm_dialog")
         }
 
         binding.deleteAllButton.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(getString(R.string.detail_delete_title))
-                .setMessage(getString(R.string.detail_delete_message))
-                .setNegativeButton(getString(R.string.dialog_option_cancel), null)
-                .setPositiveButton(getString(R.string.detail_delete_confirm)) { _, _ ->
-                    showMessage(getString(R.string.detail_action_queued))
-                }
-                .show()
+            val emailCount = arguments?.getInt(ARG_EMAIL_COUNT) ?: 0
+            DeleteConfirmDialogFragment.newInstance(emailCount)
+                .show(parentFragmentManager, "delete_confirm_dialog")
         }
+    }
+
+    private fun setupDialogResults() {
+        parentFragmentManager.setFragmentResultListener(
+            UnsubscribeConfirmDialogFragment.REQUEST_KEY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val confirmed = bundle.getBoolean(UnsubscribeConfirmDialogFragment.RESULT_CONFIRMED, false)
+            if (!confirmed) return@setFragmentResultListener
+
+            val dontShowAgain = bundle.getBoolean(
+                UnsubscribeConfirmDialogFragment.RESULT_DONT_SHOW_AGAIN,
+                false
+            )
+            if (dontShowAgain) {
+                saveSkipUnsubscribeConfirm(true)
+            }
+            showMessage(getString(R.string.detail_action_queued))
+        }
+
+        parentFragmentManager.setFragmentResultListener(
+            DeleteConfirmDialogFragment.REQUEST_KEY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val confirmed = bundle.getBoolean(DeleteConfirmDialogFragment.RESULT_CONFIRMED, false)
+            if (!confirmed) return@setFragmentResultListener
+            showMessage(getString(R.string.detail_delete_action_queued))
+        }
+    }
+
+    private fun shouldSkipUnsubscribeConfirm(): Boolean {
+        return requireContext()
+            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getBoolean(PREF_SKIP_UNSUBSCRIBE_CONFIRM, false)
+    }
+
+    private fun saveSkipUnsubscribeConfirm(skip: Boolean) {
+        requireContext()
+            .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_SKIP_UNSUBSCRIBE_CONFIRM, skip)
+            .apply()
     }
 
     private fun showMessage(message: String) {

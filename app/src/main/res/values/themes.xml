@@ -6,4 +6,11 @@
     </style>
 
     <style name="Theme.MailCleanup" parent="Base.Theme.MailCleanup" />
+
+    <style name="ThemeOverlay.MailCleanup.ModalDialog" parent="ThemeOverlay.Material3.Dialog">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>
