@@ -117,6 +117,7 @@
     <string name="unsubscribe_modal_primary">Unsubscribe</string>
     <string name="unsubscribe_modal_secondary">Keep Subscription</string>
     <string name="nav_home_selected">Ana sayfadasın.</string>
+    <string name="nav_activity_selected">Activity ekranındasın.</string>
     <string name="nav_activity_soon">Activity ekranı yakında.</string>
     <string name="nav_settings_soon">Settings ekranı yakında.</string>
     <string name="fab_add_subscription_soon">Yeni işlem ekleme yakında.</string>

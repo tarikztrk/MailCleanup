@@ -88,6 +88,21 @@ class SubscriptionDetailFragment : Fragment() {
                 .commit()
         }
 
+        binding.navHomeItem.setOnClickListener {
+            parentFragmentManager.popBackStack(
+                getString(R.string.fragment_tag_subscription_list),
+                0
+            )
+        }
+
+        binding.navActivityItem.setOnClickListener {
+            showMessage(getString(R.string.nav_activity_selected))
+        }
+
+        binding.navSettingsItem.setOnClickListener {
+            showMessage(getString(R.string.nav_settings_soon))
+        }
+
         binding.unsubscribeButton.setOnClickListener {
             if (shouldSkipUnsubscribeConfirm()) {
                 showMessage(getString(R.string.detail_action_queued))
