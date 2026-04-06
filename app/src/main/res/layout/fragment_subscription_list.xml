@@ -317,7 +317,7 @@
             android:clipToPadding="false"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:paddingBottom="86dp"
+            android:paddingBottom="112dp"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/item_subscription" />
 
@@ -354,7 +354,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="90dp"
+            android:layout_marginBottom="116dp"
             android:visibility="gone"
             tools:visibility="visible" />
     </FrameLayout>
@@ -675,7 +675,7 @@
         android:layout_gravity="bottom"
         android:layout_marginStart="10dp"
         android:layout_marginEnd="10dp"
-        android:layout_marginBottom="10dp"
+        android:layout_marginBottom="0dp"
         android:background="@drawable/bg_bottom_nav"
         android:gravity="center"
         android:orientation="horizontal"
