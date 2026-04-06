@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.snackbar.Snackbar
 import com.tarik.mailcleanup.R
 import com.tarik.mailcleanup.databinding.FragmentSearchBinding
 import com.tarik.mailcleanup.domain.model.Subscription
@@ -72,6 +73,18 @@ class SearchFragment : Fragment() {
             viewModel.setSearchQuery("")
             findNavController().navigateUp()
         }
+
+        binding.navCuratorItem.setOnClickListener {
+            viewModel.setSearchQuery("")
+            findNavController().popBackStack(R.id.subscriptionListFragment, false)
+        }
+        binding.navDiscoverItem.setOnClickListener {
+            showSnackbar(getString(R.string.nav_discover_soon))
+        }
+        binding.navSettingsItem.setOnClickListener {
+            val action = SearchFragmentDirections.actionSearchFragmentToSettingsFragment()
+            findNavController().navigate(action)
+        }
     }
 
     private fun observeData() {
@@ -99,6 +112,10 @@ class SearchFragment : Fragment() {
                 emailCount = subscription.emailCount
             )
         findNavController().navigate(action)
+    }
+
+    private fun showSnackbar(message: String) {
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

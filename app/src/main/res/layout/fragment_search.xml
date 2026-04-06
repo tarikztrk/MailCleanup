@@ -126,9 +126,12 @@
         android:paddingHorizontal="10dp">
 
         <LinearLayout
+            android:id="@+id/navCuratorItem"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center"
             android:orientation="vertical">
 
@@ -150,9 +153,12 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/navDiscoverItem"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center"
             android:orientation="vertical">
 
@@ -174,9 +180,12 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/navSearchItem"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center"
             android:orientation="vertical">
 
@@ -201,9 +210,12 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/navSettingsItem"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center"
             android:orientation="vertical">
 

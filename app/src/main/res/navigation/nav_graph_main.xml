@@ -14,6 +14,9 @@
         <action
             android:id="@+id/action_subscriptionListFragment_to_subscriptionDetailFragment"
             app:destination="@id/subscriptionDetailFragment" />
+        <action
+            android:id="@+id/action_subscriptionListFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
     </fragment>
 
     <fragment
@@ -23,6 +26,9 @@
         <action
             android:id="@+id/action_searchFragment_to_subscriptionDetailFragment"
             app:destination="@id/subscriptionDetailFragment" />
+        <action
+            android:id="@+id/action_searchFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
     </fragment>
 
     <fragment
@@ -41,6 +47,14 @@
         <action
             android:id="@+id/action_subscriptionDetailFragment_to_searchFragment"
             app:destination="@id/searchFragment" />
+        <action
+            android:id="@+id/action_subscriptionDetailFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.tarik.mailcleanup.ui.SettingsFragment"
+        android:label="SettingsFragment" />
 
 </navigation>

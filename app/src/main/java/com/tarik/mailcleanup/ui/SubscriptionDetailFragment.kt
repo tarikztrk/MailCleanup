@@ -82,12 +82,10 @@ class SubscriptionDetailFragment : Fragment() {
             findNavController().popBackStack(R.id.subscriptionListFragment, false)
         }
 
-        binding.navActivityItem.setOnClickListener {
-            showMessage(getString(R.string.nav_activity_selected))
-        }
-
         binding.navSettingsItem.setOnClickListener {
-            showMessage(getString(R.string.nav_settings_soon))
+            val action = SubscriptionDetailFragmentDirections
+                .actionSubscriptionDetailFragmentToSettingsFragment()
+            findNavController().navigate(action)
         }
 
         binding.unsubscribeButton.setOnClickListener {

@@ -166,10 +166,9 @@ class SubscriptionListFragment : Fragment() {
             showSnackbar(getString(R.string.nav_home_selected))
         }
         binding.bottomNavBar.getChildAt(1)?.setOnClickListener {
-            showSnackbar(getString(R.string.nav_activity_soon))
-        }
-        binding.bottomNavBar.getChildAt(2)?.setOnClickListener {
-            showSnackbar(getString(R.string.nav_settings_soon))
+            val action = SubscriptionListFragmentDirections
+                .actionSubscriptionListFragmentToSettingsFragment()
+            findNavController().navigate(action)
         }
 
     }

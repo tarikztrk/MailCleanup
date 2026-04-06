@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Curator - Premium</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "surface-bright": "#f8f9fa",
+                        "secondary": "#48626e",
+                        "surface-dim": "#d9dadb",
+                        "surface-variant": "#e1e3e4",
+                        "tertiary": "#940010",
+                        "primary-container": "#0056d2",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-container": "#edeeef",
+                        "on-secondary-fixed-variant": "#304a55",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#b2c5ff",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#ba1b20",
+                        "on-surface-variant": "#424654",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "surface-container-highest": "#e1e3e4",
+                        "primary": "#0040a1",
+                        "background": "#f8f9fa",
+                        "on-primary-container": "#ccd8ff",
+                        "on-background": "#191c1d",
+                        "on-primary-fixed": "#001847",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#c3c6d6",
+                        "on-surface": "#191c1d",
+                        "outline": "#737785",
+                        "on-primary-fixed-variant": "#0040a1",
+                        "primary-fixed": "#dae2ff",
+                        "on-secondary-container": "#4e6874",
+                        "tertiary-fixed": "#ffdad6",
+                        "surface": "#f8f9fa",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#cbe7f5",
+                        "on-tertiary-fixed": "#410003",
+                        "on-tertiary-container": "#ffcdc8",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#cbe7f5",
+                        "secondary-fixed-dim": "#afcbd8",
+                        "inverse-surface": "#2e3132",
+                        "on-secondary-fixed": "#021f29",
+                        "surface-tint": "#0056d2",
+                        "on-error": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .premium-gradient {
+            background: linear-gradient(135deg, #0040a1 0%, #0056d2 100%);
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 py-4 bg-[#f8f9fa] dark:bg-slate-900">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#0056D2] dark:text-blue-400 cursor-pointer" data-icon="close">close</span>
+</div>
+<h1 class="font-['Manrope'] font-extrabold text-[#0056D2] dark:text-blue-400 tracking-tighter text-lg">The Curator</h1>
+<div class="w-6"></div>
+</header>
+<main class="pt-24 pb-12 px-6 max-w-2xl mx-auto">
+<!-- Hero Section -->
+<section class="text-center mb-12">
+<div class="inline-flex items-center justify-center p-6 mb-8 rounded-3xl bg-surface-container-lowest shadow-[0_20px_50px_rgba(0,86,210,0.1)] relative">
+<div class="absolute inset-0 bg-primary/5 rounded-3xl blur-xl"></div>
+<span class="material-symbols-outlined text-6xl text-primary-container relative z-10" data-icon="diamond" style="font-variation-settings: 'FILL' 1;">diamond</span>
+</div>
+<h2 class="font-headline font-extrabold text-4xl md:text-5xl text-on-surface tracking-tight leading-tight mb-4">
+                Unleash Your Inbox's Full Potential
+            </h2>
+<p class="text-secondary font-body text-lg max-w-md mx-auto">
+                Transform your email clutter into a high-end editorial experience with premium curation tools.
+            </p>
+</section>
+<!-- Benefits Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+<div class="p-5 rounded-2xl bg-surface-container-low flex items-start gap-4 transition-colors hover:bg-surface-container">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h3 class="font-headline font-bold text-on-surface">Unlimited bulk unsubscribe</h3>
+<p class="text-sm text-secondary">Clean years of clutter in a single tap.</p>
+</div>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low flex items-start gap-4 transition-colors hover:bg-surface-container">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h3 class="font-headline font-bold text-on-surface">Advanced AI filtering</h3>
+<p class="text-sm text-secondary">Intelligent sorting that learns your habits.</p>
+</div>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low flex items-start gap-4 transition-colors hover:bg-surface-container">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h3 class="font-headline font-bold text-on-surface">Weekly digest reports</h3>
+<p class="text-sm text-secondary">Beautiful editorial summaries of your week.</p>
+</div>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low flex items-start gap-4 transition-colors hover:bg-surface-container">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h3 class="font-headline font-bold text-on-surface">Priority support</h3>
+<p class="text-sm text-secondary">Direct access to the curator team &amp; no ads.</p>
+</div>
+</div>
+</section>
+<!-- Feature Comparison Table -->
+<section class="mb-12 overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
+<div class="grid grid-cols-[1fr,80px,80px] border-b border-outline-variant bg-surface-container-low px-4 py-3">
+<span class="font-headline font-bold text-xs uppercase tracking-wider text-secondary">Features</span>
+<span class="text-center font-headline font-bold text-xs uppercase tracking-wider text-secondary">Free</span>
+<span class="text-center font-headline font-bold text-xs uppercase tracking-wider text-primary">Pro</span>
+</div>
+<div class="divide-y divide-outline-variant">
+<div class="grid grid-cols-[1fr,80px,80px] items-center px-4 py-4">
+<span class="text-sm font-medium text-on-surface">Manual Unsubscribe</span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-secondary text-lg" data-icon="check">check</span></span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-primary text-lg" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span></span>
+</div>
+<div class="grid grid-cols-[1fr,80px,80px] items-center px-4 py-4">
+<span class="text-sm font-medium text-on-surface">Bulk Unsubscribe</span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-outline-variant text-lg" data-icon="horizontal_rule">horizontal_rule</span></span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-primary text-lg" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span></span>
+</div>
+<div class="grid grid-cols-[1fr,80px,80px] items-center px-4 py-4">
+<span class="text-sm font-medium text-on-surface">Smart Filtering</span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-outline-variant text-lg" data-icon="horizontal_rule">horizontal_rule</span></span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-primary text-lg" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span></span>
+</div>
+<div class="grid grid-cols-[1fr,80px,80px] items-center px-4 py-4">
+<span class="text-sm font-medium text-on-surface">Weekly Digest Reports</span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-outline-variant text-lg" data-icon="horizontal_rule">horizontal_rule</span></span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-primary text-lg" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span></span>
+</div>
+<div class="grid grid-cols-[1fr,80px,80px] items-center px-4 py-4">
+<span class="text-sm font-medium text-on-surface">Priority Support</span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-outline-variant text-lg" data-icon="horizontal_rule">horizontal_rule</span></span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-primary text-lg" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span></span>
+</div>
+<div class="grid grid-cols-[1fr,80px,80px] items-center px-4 py-4">
+<span class="text-sm font-medium text-on-surface">Ad-free Experience</span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-outline-variant text-lg" data-icon="horizontal_rule">horizontal_rule</span></span>
+<span class="flex justify-center"><span class="material-symbols-outlined text-primary text-lg" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span></span>
+</div>
+</div>
+</section>
+<!-- Pricing Section -->
+<section class="space-y-4 mb-12">
+<!-- Monthly Option -->
+<label class="relative block cursor-pointer group">
+<input checked="" class="peer sr-only" name="plan" type="radio"/>
+<div class="p-6 rounded-2xl bg-surface-container-lowest border-2 border-transparent peer-checked:border-primary-container transition-all flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-6 h-6 rounded-full border-2 border-outline group-hover:border-primary-container peer-checked:border-primary-container flex items-center justify-center">
+<div class="w-3 h-3 rounded-full bg-primary-container scale-0 peer-checked:group-[]:scale-100 transition-transform"></div>
+</div>
+<div>
+<span class="block font-headline font-bold text-lg text-on-surface">Monthly</span>
+<span class="text-sm text-secondary">Flexible, cancel anytime</span>
+</div>
+</div>
+<div class="text-right">
+<span class="block font-headline font-bold text-xl text-on-surface">$4.99</span>
+<span class="text-xs text-secondary uppercase tracking-widest">per month</span>
+</div>
+</div>
+</label>
+<!-- Yearly Option (Recommended) -->
+<label class="relative block cursor-pointer group">
+<input class="peer sr-only" name="plan" type="radio"/>
+<div class="p-6 rounded-2xl bg-surface-container-lowest border-2 border-transparent peer-checked:border-primary-container transition-all flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-6 h-6 rounded-full border-2 border-outline group-hover:border-primary-container peer-checked:border-primary-container flex items-center justify-center">
+<div class="w-3 h-3 rounded-full bg-primary-container scale-0 peer-checked:group-[]:scale-100 transition-transform"></div>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="block font-headline font-bold text-lg text-on-surface">Yearly</span>
+<span class="px-2 py-0.5 rounded-full bg-primary-container text-[10px] font-bold text-on-primary uppercase tracking-tighter">Save 33%</span>
+</div>
+<span class="text-sm text-secondary">Best value for curators</span>
+</div>
+</div>
+<div class="text-right">
+<span class="block font-headline font-bold text-xl text-on-surface">$39.99</span>
+<span class="text-xs text-secondary uppercase tracking-widest">per year</span>
+</div>
+</div>
+</label>
+</section>
+<!-- Call to Action Area -->
+<section class="flex flex-col items-center gap-6">
+<button class="w-full py-5 premium-gradient text-on-primary font-headline font-extrabold text-lg rounded-3xl shadow-xl shadow-primary/20 active:scale-95 transition-all duration-200">
+                Start My 7-Day Free Trial
+            </button>
+<p class="text-xs text-secondary text-center px-8 leading-relaxed">
+                After your 7-day trial, your subscription will automatically renew at the chosen price unless canceled.
+            </p>
+<div class="flex items-center gap-8 mt-4">
+<a class="text-xs font-semibold text-primary hover:text-primary-container transition-colors" href="#">Restore Purchase</a>
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<a class="text-xs font-semibold text-primary hover:text-primary-container transition-colors" href="#">Terms of Service</a>
+</div>
+</section>
+</main>
+<!-- Visual Element: Decorative Background Blob -->
+<div class="fixed top-0 right-0 -z-10 w-96 h-96 bg-primary/5 blur-[100px] rounded-full translate-x-1/2 -translate-y-1/2"></div>
+<div class="fixed bottom-0 left-0 -z-10 w-96 h-96 bg-secondary-container/10 blur-[100px] rounded-full -translate-x-1/2 translate-y-1/2"></div>
+</body></html>
